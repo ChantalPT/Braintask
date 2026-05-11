@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'help_support_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -96,17 +97,49 @@ class HomePage extends StatelessWidget {
         ),
       ),
       // 5. Barra de Navegación Inferior
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF007BFF),
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Mis Preguntas'),
-          BottomNavigationBarItem(icon: Icon(Icons.add), label: 'Agregar Pregunta'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
-        ],
-      ),
+  bottomNavigationBar: BottomNavigationBar(
+  type: BottomNavigationBarType.fixed,
+  selectedItemColor: const Color(0xFF007BFF),
+  unselectedItemColor: Colors.grey,
+
+  onTap: (index) {
+    if (index == 4) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const HelpSupportPage(),
+        ),
+      );
+    }
+  },
+
+  items: const [
+    BottomNavigationBarItem(
+      icon: Icon(Icons.home),
+      label: 'Inicio',
+    ),
+
+    BottomNavigationBarItem(
+      icon: Icon(Icons.assignment),
+      label: 'Mis Preguntas',
+    ),
+
+    BottomNavigationBarItem(
+      icon: Icon(Icons.add),
+      label: 'Agregar Pregunta',
+    ),
+
+    BottomNavigationBarItem(
+      icon: Icon(Icons.person),
+      label: 'Perfil',
+    ),
+
+    BottomNavigationBarItem(
+      icon: Icon(Icons.help_outline),
+      label: 'Ayuda',
+    ),
+  ],
+),
     );
   }
 
