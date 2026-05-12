@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -24,13 +24,13 @@ class _HomePageState extends State<HomePage> {
 
   // Carga las publicaciones desde Supabase
   Future<void> _cargarPublicaciones() async {
-  print('🔄 Cargando publicaciones...');
-  setState(() => _cargando = true);
-  try {
-    // Consulta con LEFT JOIN (recomendada)
-    final data = await _supabase
-        .from('publicaciones')
-        .select('''
+    print('🔄 Cargando publicaciones...');
+    setState(() => _cargando = true);
+    try {
+      // Consulta con LEFT JOIN (recomendada)
+      final data = await _supabase
+          .from('publicaciones')
+          .select('''
           *,
           materias!left (
             nombre_materias,
@@ -38,22 +38,23 @@ class _HomePageState extends State<HomePage> {
             facultades!left (nombre_facultad)
           )
         ''')
-        .order('tiempo', ascending: false);
-    
-    print('✅ Publicaciones encontradas: ${data.length}');
-    
-    setState(() {
-      _publicaciones = data;
-      _cargando = false;
-    });
-  } catch (e) {
-    print('❌ Error al cargar: $e');
-    setState(() {
-      _publicaciones = [];
-      _cargando = false;
-    });
+          .order('tiempo', ascending: false);
+
+      print('✅ Publicaciones encontradas: ${data.length}');
+
+      setState(() {
+        _publicaciones = data;
+        _cargando = false;
+      });
+    } catch (e) {
+      print('❌ Error al cargar: $e');
+      setState(() {
+        _publicaciones = [];
+        _cargando = false;
+      });
+    }
   }
-}
+
   // Formatea el tiempo (no se usa en la tarjeta simplificada, pero lo dejo por si acaso)
   String _formatearTiempo(String? fechaISO) {
     if (fechaISO == null) return 'Reciente';
@@ -68,37 +69,65 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // Barra de búsqueda (solo UI)
+  // Barra de búsqueda con botón de filtros
   Widget _buildSearchBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      height: 50,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.search, color: Color(0xFF007BFF)),
-          SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: '¿Qué materia buscas hoy?',
-                border: InputBorder.none,
-                hintStyle: TextStyle(color: Colors.grey),
+    return Row(
+      children: [
+        Container(
+          height: 50,
+          width: 50,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
+            ],
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.tune, color: Color(0xFF007BFF)),
+            onPressed: () {
+              // Acción para filtros
+            },
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.search, color: Color(0xFF007BFF)),
+                SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: '¿Qué materia buscas hoy?',
+                      border: InputBorder.none,
+                      hintStyle: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -117,12 +146,14 @@ class _HomePageState extends State<HomePage> {
           children: [
             Icon(Icons.stars, color: Colors.orange, size: 16),
             SizedBox(width: 4),
-            Text('125 pts',
-                style: TextStyle(
-                  color: Colors.orange,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                )),
+            Text(
+              '125 pts',
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
           ],
         ),
       ),
@@ -148,54 +179,32 @@ class _HomePageState extends State<HomePage> {
         ),
         child: const Column(
           children: [
-            Text('¿Tienes una duda?',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                )),
+            Text(
+              '¿Tienes una duda?',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             SizedBox(height: 5),
-            Text('Toca aquí para publicar tu ejercicio',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, fontSize: 13)),
+            Text(
+              'Toca aquí para publicar tu ejercicio',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // Lista de categorías (estática)
-  Widget _buildCategoryList() {
-    final categories = ['Todos', 'Matemáticas', 'Física', 'Química'];
-    return SizedBox(
-      height: 35,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          return Container(
-            margin: const EdgeInsets.only(right: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            decoration: BoxDecoration(
-              color: index == 0 ? const Color(0xFF007BFF) : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: Center(
-              child: Text(categories[index],
-                  style: TextStyle(
-                    color: index == 0 ? Colors.white : Colors.black87,
-                    fontSize: 13,
-                  )),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   // Tarjeta simplificada: solo título y materia (al tocarla abre detalle)
-  Widget _buildProblemCard(String title, String materia, {required VoidCallback onTap}) {
+  Widget _buildProblemCard(
+    String title,
+    String materia, {
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -214,9 +223,18 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(materia, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text(
+                    materia,
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
                 ],
               ),
             ),
@@ -238,10 +256,7 @@ class _HomePageState extends State<HomePage> {
           'Braintask',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          _buildReputationBadge(),
-          const SizedBox(width: 15),
-        ],
+        actions: [_buildReputationBadge(), const SizedBox(width: 15)],
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -249,17 +264,19 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('¡Hola, Ale! 👋', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const Text(
+              '¡Hola, Ale! 👋',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 15),
             _buildSearchBar(),
             const SizedBox(height: 25),
             _buildActionBanner(context),
             const SizedBox(height: 25),
-            const Text('Explorar materias', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            _buildCategoryList(),
-            const SizedBox(height: 25),
-            const Text('Problemas publicados', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'Problemas publicados',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             // Lista de publicaciones o mensaje de carga/vacío
             if (_cargando)
@@ -279,7 +296,8 @@ class _HomePageState extends State<HomePage> {
               Column(
                 children: _publicaciones.map((pub) {
                   final materiaData = pub['materias'];
-                  final materiaNombre = materiaData?['nombre_materias'] ?? 'Materia desconocida';
+                  final materiaNombre =
+                      materiaData?['nombre_materias'] ?? 'Materia desconocida';
                   final publicacionId = pub['id_publicacion'];
                   return _buildProblemCard(
                     pub['titulo'] ?? 'Sin título',
@@ -288,7 +306,9 @@ class _HomePageState extends State<HomePage> {
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => DetallePublicacionPage(publicacionId: publicacionId),
+                          builder: (context) => DetallePublicacionPage(
+                            publicacionId: publicacionId,
+                          ),
                         ),
                       );
                       // Recargar por si hubo cambios (votos, etc.)
@@ -319,10 +339,22 @@ class _HomePageState extends State<HomePage> {
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.forum_outlined), label: 'Foros'),
-          BottomNavigationBarItem(icon: Icon(Icons.add_box_outlined), label: 'Publicar'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Perfil'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_filled),
+            label: 'Inicio',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.forum_outlined),
+            label: 'Foros',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_box_outlined),
+            label: 'Publicar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Perfil',
+          ),
         ],
       ),
     );
