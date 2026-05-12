@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -48,6 +47,15 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     }
   }
 
+  void _mostrarMensajeEnDesarrollo() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Funcionalidad "Subir respuesta" en desarrollo'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,24 +75,60 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Título
                           Text(
                             _publicacion!['titulo'] ?? 'Sin título',
                             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 10),
-                          // Manejo seguro de materia/facultad nulas
+                          // Materia y facultad (con manejo de nulos)
                           _buildInfoMateria(),
                           const SizedBox(height: 20),
+                          // Descripción
                           const Text('Descripción:', style: TextStyle(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 5),
                           Text(_publicacion!['descripcion'] ?? 'Sin descripción'),
                           const SizedBox(height: 20),
+                          // Archivo adjunto original
                           if (_publicacion!['foto_url'] != null) ...[
-                            const Text('Archivo adjunto:', style: TextStyle(fontWeight: FontWeight.bold)),
+                            const Text('Archivo adjunto del ejercicio:', style: TextStyle(fontWeight: FontWeight.bold)),
                             const SizedBox(height: 10),
                             _buildArchivo(_publicacion!['foto_url']),
+                            const SizedBox(height: 20),
                           ],
+                          // NUEVA SECCIÓN: Subir archivo de respuesta (en desarrollo)
+                          const Divider(height: 30),
+                          const Text('Tu respuesta:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 10),
+                          GestureDetector(
+                            onTap: _mostrarMensajeEnDesarrollo,
+                            child: Container(
+                              height: 100,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(15),
+                                border: Border.all(color: Colors.grey[300]!),
+                              ),
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.upload_file, size: 36, color: Color(0xFF007BFF)),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Subir archivo de respuesta (JPG, PNG, PDF)',
+                                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                                  ),
+                                  Text(
+                                    'Funcionalidad en desarrollo',
+                                    style: TextStyle(color: Colors.orange, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: 20),
+                          // Información adicional
                           Card(
                             child: Padding(
                               padding: const EdgeInsets.all(12),
@@ -93,8 +137,8 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                                 children: [
                                   const Text('Información adicional', style: TextStyle(fontWeight: FontWeight.bold)),
                                   const SizedBox(height: 8),
-                                  Text('📌 Tipo: ${_publicacion!['tipo_actividad'] ?? 'No especificado'}'),
-                                  Text('⭐ Puntos: ${_publicacion!['puntos'] ?? 0}'),
+                                  Text('📌 Tipo: ${_publicacion!['tipo'] ?? 'No especificado'}'),
+                                  Text('⭐ Puntos: ${_publicacion!['puntuacion'] ?? 0}'),
                                   Text('📅 Publicado: ${_formatearFecha(_publicacion!['tiempo'])}'),
                                 ],
                               ),
@@ -106,7 +150,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     );
   }
 
-  // Widget separado para mostrar materia/facultad con manejo de nulos
+  // Widget para mostrar materia/facultad de forma segura
   Widget _buildInfoMateria() {
     final materiasData = _publicacion!['materias'];
     if (materiasData == null) {
@@ -139,7 +183,10 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     if (extension == 'pdf') {
       return ElevatedButton.icon(
         onPressed: () {
-          print('Abrir PDF: $url');
+          // Por ahora solo muestra un mensaje
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Abrir PDF (próximamente)')),
+          );
         },
         icon: const Icon(Icons.picture_as_pdf),
         label: const Text('Ver PDF'),
