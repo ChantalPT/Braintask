@@ -8,29 +8,35 @@ class HelpSupportPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+
       navigationBar: const CupertinoNavigationBar(
         middle: Text('Ayuda y Soporte'),
       ),
+
       child: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(20),
+
           children: [
             const Text(
               '¿Cómo podemos ayudarte?',
               style: TextStyle(
-                fontSize: 26,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF333333),
               ),
             ),
+
             const SizedBox(height: 8),
+
             const Text(
               'Encuentra respuestas rápidas o contacta al equipo de soporte.',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 13,
                 color: Colors.grey,
               ),
             ),
+
             const SizedBox(height: 24),
 
             _HelpOption(
@@ -38,20 +44,69 @@ class HelpSupportPage extends StatelessWidget {
               title: 'Preguntas frecuentes',
               subtitle: 'Consulta dudas comunes sobre la plataforma.',
             ),
+
             _HelpOption(
               icon: CupertinoIcons.creditcard,
               title: 'Problemas con pagos',
               subtitle: 'Reporta inconvenientes con pagos o recompensas.',
             ),
+
             _HelpOption(
               icon: CupertinoIcons.exclamationmark_triangle,
               title: 'Reportar un problema',
               subtitle: 'Informa errores o fallas dentro de la app.',
             ),
+
             _HelpOption(
               icon: CupertinoIcons.chat_bubble_2,
               title: 'Contactar soporte',
               subtitle: 'Comunícate con el equipo administrador.',
+            ),
+
+            const SizedBox(height: 20),
+
+            Container(
+              padding: const EdgeInsets.all(18),
+
+              decoration: BoxDecoration(
+                color: CupertinoColors.white,
+                borderRadius: BorderRadius.circular(18),
+              ),
+
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+
+                children: [
+                  Text(
+                    'Información de contacto',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  SizedBox(height: 12),
+
+                  Text(
+                    '📧 soporte@braintask.com',
+                    style: TextStyle(fontSize: 13),
+                  ),
+
+                  SizedBox(height: 8),
+
+                  Text(
+                    '📞 +58 412-0000000',
+                    style: TextStyle(fontSize: 13),
+                  ),
+
+                  SizedBox(height: 8),
+
+                  Text(
+                    '🕒 Lunes a Viernes - 8:00 AM a 5:00 PM',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -76,9 +131,11 @@ class _HelpOption extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
+
       decoration: BoxDecoration(
         color: CupertinoColors.white,
         borderRadius: BorderRadius.circular(18),
+
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -87,6 +144,7 @@ class _HelpOption extends StatelessWidget {
           ),
         ],
       ),
+
       child: Row(
         children: [
           Icon(
@@ -94,10 +152,13 @@ class _HelpOption extends StatelessWidget {
             color: const Color(0xFF007BFF),
             size: 30,
           ),
+
           const SizedBox(width: 14),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+
               children: [
                 Text(
                   title,
@@ -107,7 +168,9 @@ class _HelpOption extends StatelessWidget {
                     color: Color(0xFF333333),
                   ),
                 ),
+
                 const SizedBox(height: 4),
+
                 Text(
                   subtitle,
                   style: const TextStyle(
@@ -118,6 +181,7 @@ class _HelpOption extends StatelessWidget {
               ],
             ),
           ),
+
           const Icon(
             CupertinoIcons.chevron_right,
             color: Colors.grey,
@@ -128,3 +192,4 @@ class _HelpOption extends StatelessWidget {
     );
   }
 }
+
