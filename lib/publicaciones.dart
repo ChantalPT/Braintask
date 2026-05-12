@@ -1,4 +1,3 @@
-// publicaciones.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io'; 
@@ -43,6 +42,12 @@ class _PublicarPageState extends State<PublicarPage> {
     super.dispose();
   }
 
+  void _mostrarError(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
+    );
+  }
+
   Future<void> _cargarFacultades() async {
     final data = await _supabase.from('facultades').select().order('nombre_facultad');
     setState(() => _facultades = data);
@@ -73,60 +78,86 @@ class _PublicarPageState extends State<PublicarPage> {
   }
 
   Future<void> _subirPublicacion() async {
-
-    if (_tituloController.text.isEmpty || 
-        _archivoSeleccionado == null || 
-        _materiaSeleccionada == null || 
-        _puntosController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Por favor, llena todos los campos, el archivo y los puntos")),
-      );
-      return;
-    }
-
-    try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-
-      final String extension = _esPdf ? 'pdf' : 'jpg';
-      final String nombreUnico = '${DateTime.now().millisecondsSinceEpoch}.$extension';
-      
-      await _supabase.storage.from('ejercicios').upload(
-        nombreUnico,
-        _archivoSeleccionado!,
-        fileOptions: FileOptions(contentType: _esPdf ? 'application/pdf' : 'image/jpeg'),
-      );
-
-      final String urlPublica = _supabase.storage.from('ejercicios').getPublicUrl(nombreUnico);
-
-  
-      await _supabase.from('publicaciones').insert({
-        'titulo': _tituloController.text,
-        'descripcion': _descripcionController.text,
-        'id_materia': int.parse(_materiaSeleccionada!),
-        'tipo_actividad': _tipoActividad,
-        'archivo_url': urlPublica,
-        'puntos': int.parse(_puntosController.text), 
-        'usuario_id': _supabase.auth.currentUser?.id, 
-      });
-
-      Navigator.pop(context); 
-      Navigator.pop(context); 
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("¡Publicado con éxito!"), backgroundColor: Colors.green),
-      );
-
-    } catch (e) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error al subir: $e"), backgroundColor: Colors.red),
-      );
-    }
+  if (_materiaSeleccionada == null) {
+    _mostrarError("Debes seleccionar una materia");
+    return;
   }
+
+  if (_tituloController.text.isEmpty) {
+    _mostrarError("Debes escribir un título");
+    return;
+  }
+
+  final descripcion = _descripcionController.text.trim();
+  if (descripcion.length < 20) {
+    _mostrarError("La descripción debe tener al menos 20 caracteres");
+    return;
+  }
+
+  final puntosTexto = _puntosController.text.trim();
+  if (puntosTexto.isEmpty) {
+    _mostrarError("Debes asignar una cantidad de puntos");
+    return;
+  }
+  final puntos = int.tryParse(puntosTexto);
+  if (puntos == null) {
+    _mostrarError("Los puntos deben ser un número válido");
+    return;
+  }
+
+  if (_archivoSeleccionado == null) {
+    _mostrarError("Debes adjuntar un archivo (JPG, PNG o PDF)");
+    return;
+  }
+
+  const int maxSizeMB = 10;
+  final sizeInBytes = _archivoSeleccionado!.lengthSync();
+  if (sizeInBytes > maxSizeMB * 1024 * 1024) {
+    _mostrarError("El archivo no puede superar los $maxSizeMB MB");
+    setState(() => _archivoSeleccionado = null);
+    return;
+  }
+
+  try {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final String extension = _esPdf ? 'pdf' : 'jpg';
+    final String nombreUnico = '${DateTime.now().millisecondsSinceEpoch}.$extension';
+
+    await _supabase.storage.from('ejercicios').upload(
+      nombreUnico,
+      _archivoSeleccionado!,
+      fileOptions: FileOptions(contentType: _esPdf ? 'application/pdf' : 'image/jpeg'),
+    );
+
+    final String urlPublica = _supabase.storage.from('ejercicios').getPublicUrl(nombreUnico);
+
+    await _supabase.from('publicaciones').insert({
+      'titulo': _tituloController.text,
+      'descripcion': descripcion,
+      'id_materia': int.parse(_materiaSeleccionada!),
+      'tipo': _tipoActividad,
+      'foto_url': urlPublica,
+      'puntuacion': puntos,
+      'cedula_usuarios': _supabase.auth.currentUser?.id,
+    });
+
+    Navigator.pop(context); 
+    Navigator.pop(context); 
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("¡Publicado con éxito!"), backgroundColor: Colors.green),
+    );
+
+  } catch (e) {
+    Navigator.pop(context); 
+    _mostrarError("Error al subir: $e");
+  }
+}
 
   @override
   Widget build(BuildContext context) {

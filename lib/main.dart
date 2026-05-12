@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'home_page.dart'; 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
- 
   await Supabase.initialize(
-    url: 'https://wxswmywnphpsrbzpwojv.supabase.co', 
-    anonKey: 'sb_publishable_take9BmJ8fcWjshpIoMjZQ_MY0JMkLZ', 
+    url: 'https://wxswmywnphpsrbzpwojv.supabase.co',
+    anonKey: 'sb_publishable_take9BmJ8fcWjshpIoMjZQ_MY0JMkLZ',
   );
 
   runApp(const MyApp());
@@ -22,11 +22,10 @@ class MyApp extends StatelessWidget {
       title: 'Braintask',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue), 
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-    
-      home: const HomePage(), 
+      home: HomePage(), 
     );
   }
 }
