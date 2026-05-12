@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
+import 'help_support_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,7 +24,6 @@ class _HomePageState extends State<HomePage> {
     _cargarPublicaciones();
   }
 
-  // Carga las publicaciones desde Supabase
   Future<void> _cargarPublicaciones() async {
     print('🔄 Cargando publicaciones...');
     setState(() => _cargando = true);
@@ -42,7 +43,7 @@ class _HomePageState extends State<HomePage> {
       print('✅ Publicaciones encontradas: ${data.length}');
 
       setState(() {
-        _publicaciones = data;
+        _publicaciones = List<Map<String, dynamic>>.from(data);
         _cargando = false;
       });
     } catch (e) {
@@ -260,6 +261,29 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _onBottomNavTap(int index) async {
+    if (index == 2) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const PublicarPage()),
+      );
+      _cargarPublicaciones();
+      return;
+    }
+
+    if (index == 4) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const HelpSupportPage()),
+      );
+      return;
+    }
+
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -314,6 +338,7 @@ class _HomePageState extends State<HomePage> {
                       materiaData?['nombre_materias'] ?? 'Materia desconocida';
                   final publicacionId = pub['id_publicacion'];
                   if (publicacionId == null) return const SizedBox.shrink();
+
                   return _buildProblemCard(
                     pub['titulo'] ?? 'Sin título',
                     materiaNombre,
@@ -343,19 +368,7 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) async {
-          if (index == 2) {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const PublicarPage()),
-            );
-            _cargarPublicaciones();
-          } else {
-            setState(() {
-              _currentIndex = index;
-            });
-          }
-        },
+        onTap: _onBottomNavTap,
         selectedItemColor: const Color(0xFF007BFF),
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
@@ -375,6 +388,10 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             label: 'Perfil',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.help_outline),
+            label: 'Ayuda',
           ),
         ],
       ),
