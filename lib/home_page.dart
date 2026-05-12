@@ -1,7 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
-import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -27,7 +27,6 @@ class _HomePageState extends State<HomePage> {
     print('🔄 Cargando publicaciones...');
     setState(() => _cargando = true);
     try {
-      // Consulta con LEFT JOIN (recomendada)
       final data = await _supabase
           .from('publicaciones')
           .select('''
@@ -52,20 +51,6 @@ class _HomePageState extends State<HomePage> {
         _publicaciones = [];
         _cargando = false;
       });
-    }
-  }
-
-  // Formatea el tiempo (no se usa en la tarjeta simplificada, pero lo dejo por si acaso)
-  String _formatearTiempo(String? fechaISO) {
-    if (fechaISO == null) return 'Reciente';
-    try {
-      final fecha = DateTime.parse(fechaISO);
-      final diff = DateTime.now().difference(fecha);
-      if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
-      if (diff.inHours < 24) return 'Hace ${diff.inHours} h';
-      return 'Hace ${diff.inDays} d';
-    } catch (e) {
-      return 'Reciente';
     }
   }
 
@@ -131,7 +116,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Badge de reputación (estático)
+  // Badge de reputación
   Widget _buildReputationBadge() {
     return Center(
       child: Container(
@@ -160,7 +145,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Banner "¿Tienes una duda?" (navega a PublicarPage y recarga al volver)
+  // Banner "¿Tienes una duda?"
   Widget _buildActionBanner(BuildContext context) {
     return GestureDetector(
       onTap: () async {
@@ -168,7 +153,7 @@ class _HomePageState extends State<HomePage> {
           context,
           MaterialPageRoute(builder: (context) => const PublicarPage()),
         );
-        _cargarPublicaciones(); // Recarga la lista después de publicar
+        _cargarPublicaciones();
       },
       child: Container(
         width: double.infinity,
@@ -199,48 +184,78 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Tarjeta simplificada: solo título y materia (al tocarla abre detalle)
+  // Tarjeta de problema con botones de acción
   Widget _buildProblemCard(
     String title,
     String materia, {
-    required VoidCallback onTap,
+    required VoidCallback onResolver,
+    required VoidCallback onForo,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.forum_outlined, color: Color(0xFF007BFF)),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.forum_outlined, color: Color(0xFF007BFF)),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    materia,
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  materia,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
             ),
-            const Icon(Icons.chevron_right, color: Colors.grey),
-          ],
-        ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: 28,
+                child: ElevatedButton(
+                  onPressed: onResolver,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF007BFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    textStyle: const TextStyle(fontSize: 11),
+                  ),
+                  child: const Text('Resolver'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 28,
+                child: OutlinedButton(
+                  onPressed: onForo,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF007BFF),
+                    side: const BorderSide(color: Color(0xFF007BFF)),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    textStyle: const TextStyle(fontSize: 11),
+                  ),
+                  child: const Text('Foro'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -278,7 +293,6 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            // Lista de publicaciones o mensaje de carga/vacío
             if (_cargando)
               const Center(child: CircularProgressIndicator())
             else if (_publicaciones.isEmpty)
@@ -299,10 +313,11 @@ class _HomePageState extends State<HomePage> {
                   final materiaNombre =
                       materiaData?['nombre_materias'] ?? 'Materia desconocida';
                   final publicacionId = pub['id_publicacion'];
+                  if (publicacionId == null) return const SizedBox.shrink();
                   return _buildProblemCard(
                     pub['titulo'] ?? 'Sin título',
                     materiaNombre,
-                    onTap: () async {
+                    onResolver: () async {
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -311,8 +326,14 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       );
-                      // Recargar por si hubo cambios (votos, etc.)
                       _cargarPublicaciones();
+                    },
+                    onForo: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Funcionalidad "Foro" en desarrollo'),
+                        ),
+                      );
                     },
                   );
                 }).toList(),
@@ -328,7 +349,7 @@ class _HomePageState extends State<HomePage> {
               context,
               MaterialPageRoute(builder: (context) => const PublicarPage()),
             );
-            _cargarPublicaciones(); // Recarga después de publicar
+            _cargarPublicaciones();
           } else {
             setState(() {
               _currentIndex = index;
