@@ -1,9 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
-import 'help_support_page.dart';
+ import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,9 +24,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _cargarPublicaciones() async {
-    print('🔄 Cargando publicaciones...');
     setState(() => _cargando = true);
-
     try {
       final data = await _supabase
           .from('publicaciones')
@@ -40,39 +37,20 @@ class _HomePageState extends State<HomePage> {
             )
           ''')
           .order('tiempo', ascending: false);
-
-      print('✅ Publicaciones encontradas: ${data.length}');
-
       setState(() {
-        _publicaciones = List<Map<String, dynamic>>.from(data);
+        _publicaciones = data;
         _cargando = false;
       });
     } catch (e) {
-      print('❌ Error al cargar: $e');
-
       setState(() {
         _publicaciones = [];
         _cargando = false;
       });
+      print('Error al cargar publicaciones: $e');
     }
   }
 
-  String _formatearTiempo(String? fechaISO) {
-    if (fechaISO == null) return 'Reciente';
-
-    try {
-      final fecha = DateTime.parse(fechaISO);
-      final diff = DateTime.now().difference(fecha);
-
-      if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
-      if (diff.inHours < 24) return 'Hace ${diff.inHours} h';
-
-      return 'Hace ${diff.inDays} d';
-    } catch (e) {
-      return 'Reciente';
-    }
-  }
-
+  // Barra de búsqueda
   Widget _buildSearchBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -106,6 +84,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Badge de reputación (estático)
   Widget _buildReputationBadge() {
     return Center(
       child: Container(
@@ -134,6 +113,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Banner "¿Tienes una duda?" (navega a PublicarPage y recarga al volver)
   Widget _buildActionBanner(BuildContext context) {
     return GestureDetector(
       onTap: () async {
@@ -141,8 +121,7 @@ class _HomePageState extends State<HomePage> {
           context,
           MaterialPageRoute(builder: (context) => const PublicarPage()),
         );
-
-        _cargarPublicaciones();
+        _cargarPublicaciones(); // Recarga la lista después de publicar
       },
       child: Container(
         width: double.infinity,
@@ -173,6 +152,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Lista de categorías
   Widget _buildCategoryList() {
     final categories = ['Todos', 'Matemáticas', 'Física', 'Química'];
 
@@ -205,50 +185,68 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildProblemCard(
-    String title,
-    String materia, {
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.forum_outlined, color: Color(0xFF007BFF)),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+  // Tarjeta con botones más pequeños y alineados a la derecha (misma altura que el título)
+  Widget _buildProblemCard(String title, String materia, {required VoidCallback onResolver, required VoidCallback onForo}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.forum_outlined, color: Color(0xFF007BFF)),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 4),
+                Text(materia, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
+            ),
+          ),
+          Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                  SizedBox(
+                    height: 28,
+                    child: ElevatedButton(
+                      onPressed: onResolver,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF007BFF),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        textStyle: const TextStyle(fontSize: 11),
+                      ),
+                      child: const Text('Resolver'),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    materia,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 28,
+                    child: OutlinedButton(
+                      onPressed: onForo,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF007BFF),
+                        side: const BorderSide(color: Color(0xFF007BFF)),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        textStyle: const TextStyle(fontSize: 11),
+                      ),
+                      child: const Text('Foro'),
                     ),
                   ),
                 ],
               ),
-            ),
-            const Icon(Icons.chevron_right, color: Colors.grey),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -333,7 +331,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             const SizedBox(height: 12),
-
             if (_cargando)
               const Center(child: CircularProgressIndicator())
             else if (_publicaciones.isEmpty)
@@ -358,7 +355,7 @@ class _HomePageState extends State<HomePage> {
                   return _buildProblemCard(
                     pub['titulo'] ?? 'Sin título',
                     materiaNombre,
-                    onTap: () async {
+                    onResolver: () async {
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -369,6 +366,11 @@ class _HomePageState extends State<HomePage> {
                       );
 
                       _cargarPublicaciones();
+                    },
+                    onForo: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Funcionalidad "Foro" en desarrollo')),
+                      );
                     },
                   );
                 }).toList(),
