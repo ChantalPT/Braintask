@@ -17,6 +17,7 @@ class _HomePageState extends State<HomePage> {
   final _supabase = Supabase.instance.client;
   List<Map<String, dynamic>> _publicaciones = [];
   bool _cargando = true;
+  String _filtroEstado = 'pendiente';
 
   @override
   void initState() {
@@ -27,20 +28,25 @@ class _HomePageState extends State<HomePage> {
   Future<void> _cargarPublicaciones() async {
     setState(() => _cargando = true);
     try {
-      final data = await _supabase
-          .from('publicaciones')
-          .select('''
+      var query = _supabase.from('publicaciones').select('''
             *,
             materias!left (
               nombre_materias,
               id_facultad,
               facultades!left (nombre_facultad)
             )
-          ''')
-          .eq('estado', 'pendiente')
-          .order('tiempo', ascending: false);
+          ''');
+
+      if (_filtroEstado == 'pendiente') {
+        query = query.eq('estado', 'pendiente');
+      } else if (_filtroEstado == 'resuelto') {
+        query = query.eq('estado', 'resuelto');
+      }
+      final data = await query.order('tiempo', ascending: false);
+
+      //final data = await query;
       setState(() {
-        _publicaciones = data;
+        _publicaciones = List<Map<String, dynamic>>.from(data);
         _cargando = false;
       });
     } catch (e) {
@@ -178,6 +184,54 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(
                   color: index == 0 ? Colors.white : Colors.black87,
                   fontSize: 13,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStatusFilter() {
+    final opciones = [
+      {'valor': 'pendiente', 'label': 'Pendientes'},
+      {'valor': 'todos', 'label': 'Todos'},
+      {'valor': 'resuelto', 'label': 'Resueltos'},
+    ];
+
+    return SizedBox(
+      height: 35,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: opciones.length,
+        itemBuilder: (context, index) {
+          final opcion = opciones[index];
+          final isSelected = _filtroEstado == opcion['valor'];
+          return GestureDetector(
+            onTap: () {
+              if (_filtroEstado != opcion['valor']) {
+                setState(() {
+                  _filtroEstado = opcion['valor']!;
+                });
+                _cargarPublicaciones(); // Recargar con el nuevo filtro
+              }
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF007BFF) : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Center(
+                child: Text(
+                  opcion['label']!,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ),
@@ -368,6 +422,10 @@ class _HomePageState extends State<HomePage> {
               'Problemas publicados',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 8),
+
+            _buildStatusFilter(),
+
             const SizedBox(height: 12),
             if (_cargando)
               const Center(child: CircularProgressIndicator())
