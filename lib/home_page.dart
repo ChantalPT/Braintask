@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
+import 'filtro.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,6 +20,9 @@ class _HomePageState extends State<HomePage> {
   bool _cargando = true;
   String _filtroEstado = 'pendiente';
 
+  String? _filtroFacultadSeleccionada;
+  String? _filtroMateriaSeleccionada;
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +34,7 @@ class _HomePageState extends State<HomePage> {
     try {
       var query = _supabase.from('publicaciones').select('''
             *,
-            materias!left (
+            materias!inner (
               nombre_materias,
               id_facultad,
               facultades!left (nombre_facultad)
@@ -42,6 +46,13 @@ class _HomePageState extends State<HomePage> {
       } else if (_filtroEstado == 'resuelto') {
         query = query.eq('estado', 'resuelto');
       }
+
+      if (_filtroMateriaSeleccionada != null) {
+        query = query.eq('id_materia', _filtroMateriaSeleccionada!);
+      } else if (_filtroFacultadSeleccionada != null) {
+        query = query.eq('materias.id_facultad', _filtroFacultadSeleccionada!);
+      }
+
       final data = await query.order('tiempo', ascending: false);
 
       setState(() {
@@ -55,6 +66,36 @@ class _HomePageState extends State<HomePage> {
       });
       debugPrint('Error al cargar publicaciones: $e');
     }
+  }
+
+  void _mostrarFiltrosDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return FiltroSheet(
+          initialFacultad: _filtroFacultadSeleccionada,
+          initialMateria: _filtroMateriaSeleccionada,
+          onApply: (facultad, materia) {
+            setState(() {
+              _filtroFacultadSeleccionada = facultad;
+              _filtroMateriaSeleccionada = materia;
+            });
+            _cargarPublicaciones();
+          },
+          onClear: () {
+            setState(() {
+              _filtroFacultadSeleccionada = null;
+              _filtroMateriaSeleccionada = null;
+            });
+            _cargarPublicaciones();
+          },
+        );
+      },
+    );
   }
 
   // Barra de búsqueda con botón de filtros
@@ -78,7 +119,7 @@ class _HomePageState extends State<HomePage> {
           child: IconButton(
             icon: const Icon(Icons.tune, color: Color(0xFF007BFF)),
             onPressed: () {
-              // Acción para filtros
+              _mostrarFiltrosDialog();
             },
           ),
         ),
