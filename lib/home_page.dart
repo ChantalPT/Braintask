@@ -22,6 +22,8 @@ class _HomePageState extends State<HomePage> {
 
   String? _filtroFacultadSeleccionada;
   String? _filtroMateriaSeleccionada;
+  String? _filtroTipoSeleccionado;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -53,6 +55,14 @@ class _HomePageState extends State<HomePage> {
         query = query.eq('materias.id_facultad', _filtroFacultadSeleccionada!);
       }
 
+      if (_filtroTipoSeleccionado != null) {
+        query = query.eq('tipo', _filtroTipoSeleccionado!);
+      }
+
+      if (_searchQuery.isNotEmpty) {
+        query = query.ilike('titulo', '%$_searchQuery%');
+      }
+
       final data = await query.order('tiempo', ascending: false);
 
       setState(() {
@@ -79,10 +89,12 @@ class _HomePageState extends State<HomePage> {
         return FiltroSheet(
           initialFacultad: _filtroFacultadSeleccionada,
           initialMateria: _filtroMateriaSeleccionada,
-          onApply: (facultad, materia) {
+          initialTipo: _filtroTipoSeleccionado,
+          onApply: (facultad, materia, tipo) {
             setState(() {
               _filtroFacultadSeleccionada = facultad;
               _filtroMateriaSeleccionada = materia;
+              _filtroTipoSeleccionado = tipo;
             });
             _cargarPublicaciones();
           },
@@ -90,6 +102,7 @@ class _HomePageState extends State<HomePage> {
             setState(() {
               _filtroFacultadSeleccionada = null;
               _filtroMateriaSeleccionada = null;
+              _filtroTipoSeleccionado = null;
             });
             _cargarPublicaciones();
           },
@@ -139,13 +152,19 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.search, color: Color(0xFF007BFF)),
-                SizedBox(width: 10),
+                const Icon(Icons.search, color: Color(0xFF007BFF)),
+                const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
-                    decoration: InputDecoration(
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                      _cargarPublicaciones();
+                    },
+                    decoration: const InputDecoration(
                       hintText: '¿Qué materia buscas hoy?',
                       border: InputBorder.none,
                       hintStyle: TextStyle(color: Colors.grey),

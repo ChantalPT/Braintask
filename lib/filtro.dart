@@ -4,13 +4,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class FiltroSheet extends StatefulWidget {
   final String? initialFacultad;
   final String? initialMateria;
-  final Function(String?, String?) onApply;
+  final String? initialTipo;
+  final Function(String?, String?, String?) onApply;
   final VoidCallback onClear;
 
   const FiltroSheet({
     super.key,
     this.initialFacultad,
     this.initialMateria,
+    this.initialTipo,
     required this.onApply,
     required this.onClear,
   });
@@ -25,12 +27,14 @@ class _FiltroSheetState extends State<FiltroSheet> {
   List<dynamic> _materias = [];
   String? _filtroFacultadSeleccionada;
   String? _filtroMateriaSeleccionada;
+  String? _filtroTipoSeleccionado;
 
   @override
   void initState() {
     super.initState();
     _filtroFacultadSeleccionada = widget.initialFacultad;
     _filtroMateriaSeleccionada = widget.initialMateria;
+    _filtroTipoSeleccionado = widget.initialTipo;
     _cargarFacultades();
     if (_filtroFacultadSeleccionada != null) {
       _cargarMaterias(_filtroFacultadSeleccionada!);
@@ -127,6 +131,26 @@ class _FiltroSheetState extends State<FiltroSheet> {
             disabledHint: const Text("Selecciona primero una facultad"),
           ),
           const SizedBox(height: 20),
+          DropdownButtonFormField<String>(
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: "Tipo de Actividad",
+              border: OutlineInputBorder(),
+            ),
+            value: _filtroTipoSeleccionado,
+            items: [
+              'Parcial',
+              'Tarea',
+              'Quiz',
+              'Proyecto',
+            ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+            onChanged: (val) {
+              setState(() {
+                _filtroTipoSeleccionado = val;
+              });
+            },
+          ),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
@@ -150,6 +174,7 @@ class _FiltroSheetState extends State<FiltroSheet> {
                     widget.onApply(
                       _filtroFacultadSeleccionada,
                       _filtroMateriaSeleccionada,
+                      _filtroTipoSeleccionado,
                     );
                     Navigator.pop(context);
                   },
