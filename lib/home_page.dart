@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:braintask/help_support_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
 
 import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
-import 'help_support_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,6 +17,7 @@ class _HomePageState extends State<HomePage> {
   final _supabase = Supabase.instance.client;
   List<Map<String, dynamic>> _publicaciones = [];
   bool _cargando = true;
+  String _filtroEstado = 'pendiente';
 
   @override
   void initState() {
@@ -25,33 +26,34 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _cargarPublicaciones() async {
-    print('🔄 Cargando publicaciones...');
     setState(() => _cargando = true);
     try {
-      final data = await _supabase
-          .from('publicaciones')
-          .select('''
-          *,
-          materias!left (
-            nombre_materias,
-            id_facultad,
-            facultades!left (nombre_facultad)
-          )
-        ''')
-          .order('tiempo', ascending: false);
+      var query = _supabase.from('publicaciones').select('''
+            *,
+            materias!left (
+              nombre_materias,
+              id_facultad,
+              facultades!left (nombre_facultad)
+            )
+          ''');
 
-      print('✅ Publicaciones encontradas: ${data.length}');
+      if (_filtroEstado == 'pendiente') {
+        query = query.eq('estado', 'pendiente');
+      } else if (_filtroEstado == 'resuelto') {
+        query = query.eq('estado', 'resuelto');
+      }
+      final data = await query.order('tiempo', ascending: false);
 
       setState(() {
         _publicaciones = List<Map<String, dynamic>>.from(data);
         _cargando = false;
       });
     } catch (e) {
-      print('❌ Error al cargar: $e');
       setState(() {
         _publicaciones = [];
         _cargando = false;
       });
+      debugPrint('Error al cargar publicaciones: $e');
     }
   }
 
@@ -185,13 +187,71 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildStatusFilter() {
+    final opciones = [
+      {'valor': 'pendiente', 'label': 'Pendientes'},
+      {'valor': 'todos', 'label': 'Todos'},
+      {'valor': 'resuelto', 'label': 'Resueltos'},
+    ];
+
+    return SizedBox(
+      height: 35,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: opciones.length,
+        itemBuilder: (context, index) {
+          final opcion = opciones[index];
+          final isSelected = _filtroEstado == opcion['valor'];
+          return GestureDetector(
+            onTap: () {
+              if (_filtroEstado != opcion['valor']) {
+                setState(() {
+                  _filtroEstado = opcion['valor']!;
+                });
+                _cargarPublicaciones(); // Recargar con el nuevo filtro
+              }
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF007BFF) : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Center(
+                child: Text(
+                  opcion['label']!,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   // Tarjeta de problema con botones de acción
   Widget _buildProblemCard(
     String title,
-    String materia, {
+    String materia,
+    String descripcion,
+    int puntuacion, {
     required VoidCallback onResolver,
     required VoidCallback onForo,
   }) {
+    // Vista previa de la descripción (máx 120 caracteres)
+    String descripcionPreview = descripcion.trim();
+    if (descripcionPreview.length > 120) {
+      descripcionPreview = '${descripcionPreview.substring(0, 120)}...';
+    }
+    if (descripcionPreview.isEmpty) {
+      descripcionPreview = 'Sin descripción';
+    }
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -200,62 +260,93 @@ class _HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.forum_outlined, color: Color(0xFF007BFF)),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  materia,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
+          //Fila con icono, titulo, materia, pts y botones.
           Row(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                height: 28,
-                child: ElevatedButton(
-                  onPressed: onResolver,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF007BFF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    textStyle: const TextStyle(fontSize: 11),
-                  ),
-                  child: const Text('Resolver'),
+              const Icon(Icons.forum_outlined, color: Color(0xFF007BFF)),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      materia,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.monetization_on,
+                          size: 14,
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$puntuacion pts',
+                          style: const TextStyle(
+                            color: Colors.orange,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 28,
-                child: OutlinedButton(
-                  onPressed: onForo,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF007BFF),
-                    side: const BorderSide(color: Color(0xFF007BFF)),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    textStyle: const TextStyle(fontSize: 11),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      SizedBox(
+                        height: 28,
+                        child: ElevatedButton(
+                          onPressed: onResolver,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF007BFF),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            textStyle: const TextStyle(fontSize: 11),
+                          ),
+                          child: const Text('Resolver'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        height: 28,
+                        child: OutlinedButton(
+                          onPressed: onForo,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF007BFF),
+                            side: const BorderSide(color: Color(0xFF007BFF)),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            textStyle: const TextStyle(fontSize: 11),
+                          ),
+                          child: const Text('Foro'),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text('Foro'),
-                ),
+                ],
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          Text(descripcionPreview, style: const TextStyle(fontSize: 12)),
         ],
       ),
     );
@@ -316,6 +407,10 @@ class _HomePageState extends State<HomePage> {
               'Problemas publicados',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 8),
+
+            _buildStatusFilter(),
+
             const SizedBox(height: 12),
             if (_cargando)
               const Center(child: CircularProgressIndicator())
@@ -337,11 +432,12 @@ class _HomePageState extends State<HomePage> {
                   final materiaNombre =
                       materiaData?['nombre_materias'] ?? 'Materia desconocida';
                   final publicacionId = pub['id_publicacion'];
-                  if (publicacionId == null) return const SizedBox.shrink();
 
                   return _buildProblemCard(
                     pub['titulo'] ?? 'Sin título',
                     materiaNombre,
+                    pub['descripcion'] ?? '',
+                    pub['puntuacion'] ?? 0,
                     onResolver: () async {
                       await Navigator.push(
                         context,
@@ -351,6 +447,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       );
+
                       _cargarPublicaciones();
                     },
                     onForo: () {
