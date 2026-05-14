@@ -25,6 +25,9 @@ class _HomePageState extends State<HomePage> {
   String? _filtroTipoSeleccionado;
   String _searchQuery = '';
 
+  // Cache para promedios (opcional, mejora rendimiento)
+  final Map<int, double> _avgCache = {};
+
   @override
   void initState() {
     super.initState();
@@ -69,12 +72,37 @@ class _HomePageState extends State<HomePage> {
         _publicaciones = List<Map<String, dynamic>>.from(data);
         _cargando = false;
       });
+      // Limpiar caché al recargar
+      _avgCache.clear();
     } catch (e) {
       setState(() {
         _publicaciones = [];
         _cargando = false;
       });
       debugPrint('Error al cargar publicaciones: $e');
+    }
+  }
+
+  Future<double?> _getAverageDifficulty(int publicacionId) async {
+    // Verificar caché
+    if (_avgCache.containsKey(publicacionId)) {
+      return _avgCache[publicacionId];
+    }
+    try {
+      final data = await _supabase
+          .from('calificaciones_dificultad')
+          .select('dificultad')
+          .eq('id_publicacion', publicacionId);
+      if (data.isEmpty) return null;
+      int sum = 0;
+      for (var item in data) {
+        sum += item['dificultad'] as int;
+      }
+      final avg = sum / data.length;
+      _avgCache[publicacionId] = avg;
+      return avg;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -111,7 +139,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Barra de búsqueda con botón de filtros
   Widget _buildSearchBar() {
     return Row(
       children: [
@@ -179,7 +206,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Badge de reputación
   Widget _buildReputationBadge() {
     return Center(
       child: Container(
@@ -208,7 +234,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Banner "¿Tienes una duda?"
   Widget _buildActionBanner(BuildContext context) {
     return GestureDetector(
       onTap: () async {
@@ -268,7 +293,7 @@ class _HomePageState extends State<HomePage> {
                 setState(() {
                   _filtroEstado = opcion['valor']!;
                 });
-                _cargarPublicaciones(); // Recargar con el nuevo filtro
+                _cargarPublicaciones();
               }
             },
             child: Container(
@@ -295,16 +320,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Tarjeta de problema con botones de acción
   Widget _buildProblemCard(
     String title,
     String materia,
     String descripcion,
-    int puntuacion, {
+    int puntuacion,
+    int publicacionId, {
     required VoidCallback onResolver,
     required VoidCallback onForo,
   }) {
-    // Vista previa de la descripción (máx 120 caracteres)
     String descripcionPreview = descripcion.trim();
     if (descripcionPreview.length > 120) {
       descripcionPreview = '${descripcionPreview.substring(0, 120)}...';
@@ -323,7 +347,6 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          //Fila con icono, titulo, materia, pts y botones.
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -348,18 +371,25 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(
-                          Icons.monetization_on,
-                          size: 14,
-                          color: Colors.orange,
-                        ),
+                        const Icon(Icons.monetization_on, size: 14, color: Colors.orange),
                         const SizedBox(width: 4),
                         Text(
                           '$puntuacion pts',
-                          style: const TextStyle(
-                            color: Colors.orange,
-                            fontSize: 11,
-                          ),
+                          style: const TextStyle(color: Colors.orange, fontSize: 11),
+                        ),
+                        const SizedBox(width: 12),
+                        const Icon(Icons.star, size: 12, color: Colors.amber),
+                        const SizedBox(width: 4),
+                        FutureBuilder<double?>(
+                          future: _getAverageDifficulty(publicacionId),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const SizedBox(width: 20, child: Center(child: SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 2))));
+                            }
+                            final avg = snapshot.data;
+                            if (avg == null) return const Text('--', style: TextStyle(fontSize: 11));
+                            return Text(avg.toStringAsFixed(1), style: const TextStyle(fontSize: 11));
+                          },
                         ),
                       ],
                     ),
@@ -468,9 +498,7 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-
             _buildStatusFilter(),
-
             const SizedBox(height: 12),
             if (_cargando)
               const Center(child: CircularProgressIndicator())
@@ -498,6 +526,7 @@ class _HomePageState extends State<HomePage> {
                     materiaNombre,
                     pub['descripcion'] ?? '',
                     pub['puntuacion'] ?? 0,
+                    publicacionId,
                     onResolver: () async {
                       await Navigator.push(
                         context,
@@ -507,7 +536,6 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       );
-
                       _cargarPublicaciones();
                     },
                     onForo: () {

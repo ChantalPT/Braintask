@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DetallePublicacionPage extends StatefulWidget {
   final int publicacionId;
@@ -15,10 +16,34 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   bool _cargando = true;
   String? _error;
 
+  // Calificaciones
+  double? _averageDifficulty;
+  int? _userRating;
+  bool _ratingLoading = false;
+  final Set<int> _ratedPublications = {};
+
   @override
   void initState() {
     super.initState();
+    _cargarCalificacionesLocales();
     _cargarDetalle();
+    _cargarRatingInfo();
+  }
+
+  Future<void> _cargarCalificacionesLocales() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String>? rated = prefs.getStringList('rated_publications');
+    if (rated != null) {
+      _ratedPublications.addAll(rated.map(int.parse));
+    }
+  }
+
+  Future<void> _guardarCalificacionLocal(int rating) async {
+    final prefs = await SharedPreferences.getInstance();
+    _ratedPublications.add(widget.publicacionId);
+    await prefs.setStringList(
+        'rated_publications', _ratedPublications.map((e) => e.toString()).toList());
+    await prefs.setInt('rating_${widget.publicacionId}', rating);
   }
 
   Future<void> _cargarDetalle() async {
@@ -45,6 +70,128 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         _cargando = false;
       });
     }
+  }
+
+  Future<void> _cargarRatingInfo() async {
+    try {
+      final avgData = await _supabase
+          .from('calificaciones_dificultad')
+          .select('dificultad')
+          .eq('id_publicacion', widget.publicacionId);
+
+      if (avgData.isNotEmpty) {
+        final sum = avgData.fold<int>(0, (p, n) => p + (n['dificultad'] as int));
+        setState(() {
+          _averageDifficulty = sum / avgData.length;
+        });
+      } else {
+        setState(() => _averageDifficulty = null);
+      }
+
+      if (_ratedPublications.contains(widget.publicacionId)) {
+        final prefs = await SharedPreferences.getInstance();
+        final savedRating = prefs.getInt('rating_${widget.publicacionId}');
+        if (savedRating != null) {
+          setState(() => _userRating = savedRating);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error cargando calificaciones: $e');
+    }
+  }
+
+  Future<void> _enviarCalificacion(int rating) async {
+    if (_ratedPublications.contains(widget.publicacionId)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ya calificaste este ejercicio anteriormente')),
+      );
+      return;
+    }
+
+    setState(() => _ratingLoading = true);
+    try {
+      await _supabase.from('calificaciones_dificultad').insert({
+        'id_publicacion': widget.publicacionId,
+        'dificultad': rating,
+      });
+
+      await _guardarCalificacionLocal(rating);
+      setState(() => _userRating = rating);
+      await _cargarRatingInfo();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('¡Gracias! Calificaste con $rating estrella(s)')),
+      );
+    } catch (e) {
+      String mensaje = 'Error al guardar: $e';
+      if (e.toString().contains('row-level security')) {
+        mensaje = 'Error de permisos. Contacta al administrador.';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
+      );
+    } finally {
+      setState(() => _ratingLoading = false);
+    }
+  }
+
+  Widget _buildRatingSection() {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Califica la dificultad del ejercicio',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Text('⭐ Promedio: ', style: TextStyle(fontSize: 14)),
+                if (_averageDifficulty != null)
+                  Text('${_averageDifficulty!.toStringAsFixed(1)} / 5',
+                      style: const TextStyle(fontWeight: FontWeight.bold))
+                else
+                  const Text('Sin calificaciones', style: TextStyle(color: Colors.grey)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text('Tu calificación:', style: TextStyle(fontSize: 14)),
+            const SizedBox(height: 6),
+            _ratingLoading
+                ? const SizedBox(height: 40, child: Center(child: CircularProgressIndicator()))
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      int starValue = index + 1;
+                      return IconButton(
+                        icon: Icon(
+                          (_userRating != null && starValue <= _userRating!)
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: Colors.amber,
+                          size: 36,
+                        ),
+                        onPressed: () => _enviarCalificacion(starValue),
+                        splashRadius: 24,
+                      );
+                    }),
+                  ),
+            if (_userRating != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Ya calificaste con $_userRating estrella(s). Solo puedes votar una vez.',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _mostrarMensajeEnDesarrollo() {
@@ -75,28 +222,24 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Título
                           Text(
                             _publicacion!['titulo'] ?? 'Sin título',
                             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 10),
-                          // Materia y facultad (con manejo de nulos)
                           _buildInfoMateria(),
                           const SizedBox(height: 20),
-                          // Descripción
                           const Text('Descripción:', style: TextStyle(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 5),
                           Text(_publicacion!['descripcion'] ?? 'Sin descripción'),
                           const SizedBox(height: 20),
-                          // Archivo adjunto original
                           if (_publicacion!['foto_url'] != null) ...[
                             const Text('Archivo adjunto del ejercicio:', style: TextStyle(fontWeight: FontWeight.bold)),
                             const SizedBox(height: 10),
                             _buildArchivo(_publicacion!['foto_url']),
                             const SizedBox(height: 20),
                           ],
-                          // NUEVA SECCIÓN: Subir archivo de respuesta (en desarrollo)
+                          _buildRatingSection(),
                           const Divider(height: 30),
                           const Text('Tu respuesta:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                           const SizedBox(height: 10),
@@ -128,7 +271,6 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          // Información adicional
                           Card(
                             child: Padding(
                               padding: const EdgeInsets.all(12),
@@ -150,7 +292,6 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     );
   }
 
-  // Widget para mostrar materia/facultad de forma segura
   Widget _buildInfoMateria() {
     final materiasData = _publicacion!['materias'];
     if (materiasData == null) {
@@ -183,7 +324,6 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     if (extension == 'pdf') {
       return ElevatedButton.icon(
         onPressed: () {
-          // Por ahora solo muestra un mensaje
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Abrir PDF (próximamente)')),
           );
