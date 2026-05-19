@@ -42,7 +42,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     final prefs = await SharedPreferences.getInstance();
     _ratedPublications.add(widget.publicacionId);
     await prefs.setStringList(
-        'rated_publications', _ratedPublications.map((e) => e.toString()).toList());
+      'rated_publications',
+      _ratedPublications.map((e) => e.toString()).toList(),
+    );
     await prefs.setInt('rating_${widget.publicacionId}', rating);
   }
 
@@ -80,7 +82,10 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
           .eq('id_publicacion', widget.publicacionId);
 
       if (avgData.isNotEmpty) {
-        final sum = avgData.fold<int>(0, (p, n) => p + (n['dificultad'] as int));
+        final sum = avgData.fold<int>(
+          0,
+          (p, n) => p + (n['dificultad'] as int),
+        );
         setState(() {
           _averageDifficulty = sum / avgData.length;
         });
@@ -103,7 +108,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   Future<void> _enviarCalificacion(int rating) async {
     if (_ratedPublications.contains(widget.publicacionId)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ya calificaste este ejercicio anteriormente')),
+        const SnackBar(
+          content: Text('Ya calificaste este ejercicio anteriormente'),
+        ),
       );
       return;
     }
@@ -120,7 +127,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
       await _cargarRatingInfo();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('¡Gracias! Calificaste con $rating estrella(s)')),
+        SnackBar(
+          content: Text('¡Gracias! Calificaste con $rating estrella(s)'),
+        ),
       );
     } catch (e) {
       String mensaje = 'Error al guardar: $e';
@@ -152,33 +161,46 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               children: [
                 const Text('⭐ Promedio: ', style: TextStyle(fontSize: 14)),
                 if (_averageDifficulty != null)
-                  Text('${_averageDifficulty!.toStringAsFixed(1)} / 5',
-                      style: const TextStyle(fontWeight: FontWeight.bold))
+                  Text(
+                    '${_averageDifficulty!.toStringAsFixed(1)} / 5',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  )
                 else
-                  const Text('Sin calificaciones', style: TextStyle(color: Colors.grey)),
+                  const Text(
+                    'Sin calificaciones',
+                    style: TextStyle(color: Colors.grey),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
             const Text('Tu calificación:', style: TextStyle(fontSize: 14)),
             const SizedBox(height: 6),
             _ratingLoading
-                ? const SizedBox(height: 40, child: Center(child: CircularProgressIndicator()))
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      int starValue = index + 1;
-                      return IconButton(
-                        icon: Icon(
-                          (_userRating != null && starValue <= _userRating!)
-                              ? Icons.star
-                              : Icons.star_border,
-                          color: Colors.amber,
-                          size: 36,
-                        ),
-                        onPressed: () => _enviarCalificacion(starValue),
-                        splashRadius: 24,
-                      );
-                    }),
+                ? const SizedBox(
+                    height: 40,
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(5, (index) {
+                          int starValue = index + 1;
+                          return IconButton(
+                            icon: Icon(
+                              (_userRating != null && starValue <= _userRating!)
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              color: Colors.amber,
+                              size: 36,
+                            ),
+                            onPressed: () => _enviarCalificacion(starValue),
+                            splashRadius: 24,
+                          );
+                        }),
+                      ),
+                    ),
                   ),
             if (_userRating != null)
               Padding(
@@ -214,81 +236,107 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text('Error: $_error'))
-              : _publicacion == null
-                  ? const Center(child: Text('No se encontró la publicación'))
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          ? Center(child: Text('Error: $_error'))
+          : _publicacion == null
+          ? const Center(child: Text('No se encontró la publicación'))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _publicacion!['titulo'] ?? 'Sin título',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildInfoMateria(),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Descripción:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(_publicacion!['descripcion'] ?? 'Sin descripción'),
+                  const SizedBox(height: 20),
+                  if (_publicacion!['foto_url'] != null) ...[
+                    const Text(
+                      'Archivo adjunto del ejercicio:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildArchivo(_publicacion!['foto_url']),
+                    const SizedBox(height: 20),
+                  ],
+                  _buildRatingSection(),
+                  const Divider(height: 30),
+                  const Text(
+                    'Tu respuesta:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: _mostrarMensajeEnDesarrollo,
+                    child: Container(
+                      height: 100,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          Icon(
+                            Icons.upload_file,
+                            size: 36,
+                            color: Color(0xFF007BFF),
+                          ),
+                          SizedBox(height: 8),
                           Text(
-                            _publicacion!['titulo'] ?? 'Sin título',
-                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                            'Subir archivo de respuesta (JPG, PNG, PDF)',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
                           ),
-                          const SizedBox(height: 10),
-                          _buildInfoMateria(),
-                          const SizedBox(height: 20),
-                          const Text('Descripción:', style: TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 5),
-                          Text(_publicacion!['descripcion'] ?? 'Sin descripción'),
-                          const SizedBox(height: 20),
-                          if (_publicacion!['foto_url'] != null) ...[
-                            const Text('Archivo adjunto del ejercicio:', style: TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 10),
-                            _buildArchivo(_publicacion!['foto_url']),
-                            const SizedBox(height: 20),
-                          ],
-                          _buildRatingSection(),
-                          const Divider(height: 30),
-                          const Text('Tu respuesta:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 10),
-                          GestureDetector(
-                            onTap: _mostrarMensajeEnDesarrollo,
-                            child: Container(
-                              height: 100,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(15),
-                                border: Border.all(color: Colors.grey[300]!),
-                              ),
-                              child: const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.upload_file, size: 36, color: Color(0xFF007BFF)),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Subir archivo de respuesta (JPG, PNG, PDF)',
-                                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                                  ),
-                                  Text(
-                                    'Funcionalidad en desarrollo',
-                                    style: TextStyle(color: Colors.orange, fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Información adicional', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 8),
-                                  Text('📌 Tipo: ${_publicacion!['tipo'] ?? 'No especificado'}'),
-                                  Text('⭐ Puntos: ${_publicacion!['puntuacion'] ?? 0}'),
-                                  Text('📅 Publicado: ${_formatearFecha(_publicacion!['tiempo'])}'),
-                                ],
-                              ),
+                          Text(
+                            'Funcionalidad en desarrollo',
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontSize: 12,
                             ),
                           ),
                         ],
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Información adicional',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '📌 Tipo: ${_publicacion!['tipo'] ?? 'No especificado'}',
+                          ),
+                          Text('⭐ Puntos: ${_publicacion!['puntuacion'] ?? 0}'),
+                          Text(
+                            '📅 Publicado: ${_formatearFecha(_publicacion!['tiempo'])}',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 
@@ -301,8 +349,10 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
       );
     }
     final facultadesData = materiasData['facultades'];
-    final materiaNombre = materiasData['nombre_materias'] ?? 'Materia desconocida';
-    final facultadNombre = (facultadesData != null && facultadesData['nombre_facultad'] != null)
+    final materiaNombre =
+        materiasData['nombre_materias'] ?? 'Materia desconocida';
+    final facultadNombre =
+        (facultadesData != null && facultadesData['nombre_facultad'] != null)
         ? facultadesData['nombre_facultad']
         : 'Facultad desconocida';
     return Row(

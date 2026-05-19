@@ -8,6 +8,7 @@ class Publicacion {
   final String? nombreMateria;
   final String? nombreFacultad;
   final double? promedioDificultad;
+  final int puntuacion;
 
   Publicacion({
     required this.id,
@@ -19,6 +20,7 @@ class Publicacion {
     this.nombreMateria,
     this.nombreFacultad,
     this.promedioDificultad,
+    this.puntuacion = 0,
   });
 
   factory Publicacion.fromJson(Map<String, dynamic> json) {
@@ -26,8 +28,8 @@ class Publicacion {
     final facultades = materias != null ? materias['facultades'] : null;
 
     return Publicacion(
-      id: json['id'],
-      titulo: json['titulo'] ?? '',
+      id: json['id_publicacion'],
+      titulo: json['titulo'] ?? 'Sin título',
       descripcion: json['descripcion'],
       estado: json['estado'] ?? 'pendiente',
       tipo: json['tipo'] ?? 'otro',
@@ -36,6 +38,7 @@ class Publicacion {
           : DateTime.now(),
       nombreMateria: materias != null ? materias['nombre_materias'] : null,
       nombreFacultad: facultades != null ? facultades['nombre_facultad'] : null,
+      puntuacion: json['puntuacion'] ?? 0,
     );
   }
 
@@ -50,6 +53,7 @@ class Publicacion {
       nombreMateria: nombreMateria,
       nombreFacultad: nombreFacultad,
       promedioDificultad: promedioDificultad ?? this.promedioDificultad,
+      puntuacion: puntuacion,
     );
   }
 }

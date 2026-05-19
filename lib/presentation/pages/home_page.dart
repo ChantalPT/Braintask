@@ -323,35 +323,56 @@ class _HomePageState extends State<HomePage> {
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                     const SizedBox(height: 4),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.monetization_on,
-                          size: 14,
-                          color: Colors.orange,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.monetization_on,
+                              size: 14,
+                              color: Colors.orange,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${pub.puntuacion} pts',
+                              style: const TextStyle(
+                                color: Colors.orange,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          '0 pts', // Ajustar si el modelo tiene pts
-                          style: TextStyle(color: Colors.orange, fontSize: 11),
-                        ),
-                        const SizedBox(width: 12),
-                        const Icon(Icons.star, size: 12, color: Colors.amber),
-                        const SizedBox(width: 4),
-                        Text(
-                          pub.promedioDificultad?.toStringAsFixed(1) ?? '--',
-                          style: const TextStyle(fontSize: 11),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.star,
+                              size: 12,
+                              color: Colors.amber,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              pub.promedioDificultad?.toStringAsFixed(1) ??
+                                  '--',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Column(
-                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(
                         height: 28,
@@ -376,7 +397,7 @@ class _HomePageState extends State<HomePage> {
                           child: const Text('Resolver'),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       SizedBox(
                         height: 28,
                         child: OutlinedButton(
