@@ -1,10 +1,12 @@
-import 'package:braintask/help_support_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 
+import '../../data/models/publicacion.dart';
+import '../../data/repositories/publicaciones_repository.dart';
 import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
 import 'filtro.dart';
+import 'help_support_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,8 +17,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
-  final _supabase = Supabase.instance.client;
-  List<Map<String, dynamic>> _publicaciones = [];
+  late final PublicacionesRepository _repository;
+  List<Publicacion> _publicaciones = [];
   bool _cargando = true;
   String _filtroEstado = 'pendiente';
 
@@ -25,55 +27,36 @@ class _HomePageState extends State<HomePage> {
   String? _filtroTipoSeleccionado;
   String _searchQuery = '';
 
-  // Cache para promedios (opcional, mejora rendimiento)
-  final Map<int, double> _avgCache = {};
-
   @override
   void initState() {
     super.initState();
+    _repository = PublicacionesRepository(Supabase.instance.client);
     _cargarPublicaciones();
   }
 
   Future<void> _cargarPublicaciones() async {
     setState(() => _cargando = true);
     try {
-      var query = _supabase.from('publicaciones').select('''
-            *,
-            materias!inner (
-              nombre_materias,
-              id_facultad,
-              facultades!left (nombre_facultad)
-            )
-          ''');
+      final data = await _repository.getPublicaciones(
+        estado: _filtroEstado,
+        idMateria: _filtroMateriaSeleccionada,
+        idFacultad: _filtroFacultadSeleccionada,
+        tipo: _filtroTipoSeleccionado,
+        search: _searchQuery,
+      );
 
-      if (_filtroEstado == 'pendiente') {
-        query = query.eq('estado', 'pendiente');
-      } else if (_filtroEstado == 'resuelto') {
-        query = query.eq('estado', 'resuelto');
-      }
-
-      if (_filtroMateriaSeleccionada != null) {
-        query = query.eq('id_materia', _filtroMateriaSeleccionada!);
-      } else if (_filtroFacultadSeleccionada != null) {
-        query = query.eq('materias.id_facultad', _filtroFacultadSeleccionada!);
-      }
-
-      if (_filtroTipoSeleccionado != null) {
-        query = query.eq('tipo', _filtroTipoSeleccionado!);
-      }
-
-      if (_searchQuery.isNotEmpty) {
-        query = query.ilike('titulo', '%$_searchQuery%');
-      }
-
-      final data = await query.order('tiempo', ascending: false);
+      // Cargar promedios de dificultad en paralelo (opcional, mejorando UX)
+      final actualizadas = await Future.wait(
+        data.map((p) async {
+          final avg = await _repository.getAverageDifficulty(p.id);
+          return p.copyWith(promedioDificultad: avg);
+        }),
+      );
 
       setState(() {
-        _publicaciones = List<Map<String, dynamic>>.from(data);
+        _publicaciones = actualizadas;
         _cargando = false;
       });
-      // Limpiar caché al recargar
-      _avgCache.clear();
     } catch (e) {
       setState(() {
         _publicaciones = [];
@@ -83,28 +66,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<double?> _getAverageDifficulty(int publicacionId) async {
-    // Verificar caché
-    if (_avgCache.containsKey(publicacionId)) {
-      return _avgCache[publicacionId];
-    }
-    try {
-      final data = await _supabase
-          .from('calificaciones_dificultad')
-          .select('dificultad')
-          .eq('id_publicacion', publicacionId);
-      if (data.isEmpty) return null;
-      int sum = 0;
-      for (var item in data) {
-        sum += item['dificultad'] as int;
-      }
-      final avg = sum / data.length;
-      _avgCache[publicacionId] = avg;
-      return avg;
-    } catch (e) {
-      return null;
-    }
-  }
+  // Eliminado _getAverageDifficulty y _avgCache ya que se maneja en el repositorio y copyWith
 
   void _mostrarFiltrosDialog() {
     showModalBottomSheet(
@@ -320,16 +282,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildProblemCard(
-    String title,
-    String materia,
-    String descripcion,
-    int puntuacion,
-    int publicacionId, {
-    required VoidCallback onResolver,
-    required VoidCallback onForo,
-  }) {
-    String descripcionPreview = descripcion.trim();
+  Widget _buildProblemCard(Publicacion pub) {
+    String descripcionPreview = (pub.descripcion ?? '').trim();
     if (descripcionPreview.length > 120) {
       descripcionPreview = '${descripcionPreview.substring(0, 120)}...';
     }
@@ -357,7 +311,7 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      pub.titulo,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -365,31 +319,28 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      materia,
+                      pub.nombreMateria ?? 'Materia desconocida',
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.monetization_on, size: 14, color: Colors.orange),
+                        const Icon(
+                          Icons.monetization_on,
+                          size: 14,
+                          color: Colors.orange,
+                        ),
                         const SizedBox(width: 4),
-                        Text(
-                          '$puntuacion pts',
-                          style: const TextStyle(color: Colors.orange, fontSize: 11),
+                        const Text(
+                          '0 pts', // Ajustar si el modelo tiene pts
+                          style: TextStyle(color: Colors.orange, fontSize: 11),
                         ),
                         const SizedBox(width: 12),
                         const Icon(Icons.star, size: 12, color: Colors.amber),
                         const SizedBox(width: 4),
-                        FutureBuilder<double?>(
-                          future: _getAverageDifficulty(publicacionId),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return const SizedBox(width: 20, child: Center(child: SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 2))));
-                            }
-                            final avg = snapshot.data;
-                            if (avg == null) return const Text('--', style: TextStyle(fontSize: 11));
-                            return Text(avg.toStringAsFixed(1), style: const TextStyle(fontSize: 11));
-                          },
+                        Text(
+                          pub.promedioDificultad?.toStringAsFixed(1) ?? '--',
+                          style: const TextStyle(fontSize: 11),
                         ),
                       ],
                     ),
@@ -405,7 +356,17 @@ class _HomePageState extends State<HomePage> {
                       SizedBox(
                         height: 28,
                         child: ElevatedButton(
-                          onPressed: onResolver,
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DetallePublicacionPage(
+                                  publicacionId: pub.id,
+                                ),
+                              ),
+                            );
+                            _cargarPublicaciones();
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF007BFF),
                             foregroundColor: Colors.white,
@@ -419,7 +380,7 @@ class _HomePageState extends State<HomePage> {
                       SizedBox(
                         height: 28,
                         child: OutlinedButton(
-                          onPressed: onForo,
+                          onPressed: () {}, // Foro action
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFF007BFF),
                             side: const BorderSide(color: Color(0xFF007BFF)),
@@ -516,36 +477,7 @@ class _HomePageState extends State<HomePage> {
             else
               Column(
                 children: _publicaciones.map((pub) {
-                  final materiaData = pub['materias'];
-                  final materiaNombre =
-                      materiaData?['nombre_materias'] ?? 'Materia desconocida';
-                  final publicacionId = pub['id_publicacion'];
-
-                  return _buildProblemCard(
-                    pub['titulo'] ?? 'Sin título',
-                    materiaNombre,
-                    pub['descripcion'] ?? '',
-                    pub['puntuacion'] ?? 0,
-                    publicacionId,
-                    onResolver: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => DetallePublicacionPage(
-                            publicacionId: publicacionId,
-                          ),
-                        ),
-                      );
-                      _cargarPublicaciones();
-                    },
-                    onForo: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Funcionalidad "Foro" en desarrollo'),
-                        ),
-                      );
-                    },
-                  );
+                  return _buildProblemCard(pub);
                 }).toList(),
               ),
           ],
