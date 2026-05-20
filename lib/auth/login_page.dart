@@ -1,5 +1,5 @@
-import '../home_page.dart';
 import 'package:flutter/material.dart';
+import '../home_page.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -24,16 +24,16 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _iniciarSesion() {
-    if (_formKey.currentState!.validate()) {
-      Navigator.pushReplacement(
-  context,
-  MaterialPageRoute(
-    builder: (context) => HomePage(),
-  ),
+ void _iniciarSesion() {
+  if (!_formKey.currentState!.validate()) return;
+
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => HomePage(),
+    ),
   );
-    }
-  }
+}
 
   InputDecoration _inputDecoration({
     required String label,
@@ -70,12 +70,12 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF007BFF),
-        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           'Inicio de sesión',
           style: TextStyle(color: Colors.white),
         ),
+        backgroundColor: const Color(0xFF007BFF),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -94,15 +94,18 @@ class _LoginPageState extends State<LoginPage> {
                     decoration: TextDecoration.none,
                   ),
                 ),
+
                 const SizedBox(height: 8),
+
                 const Text(
-                  'Inicia sesión para acceder a tu cuenta y continuar utilizando la plataforma.',
+                  'Inicia sesión para acceder a tu perfil, ejercicios publicados y soluciones recibidas.',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey,
                     decoration: TextDecoration.none,
                   ),
                 ),
+
                 const SizedBox(height: 28),
 
                 TextFormField(
@@ -114,7 +117,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Ingresa tu correo';
+                      return 'Ingresa tu correo electrónico';
                     }
 
                     if (!value.contains('@')) {
@@ -152,7 +155,7 @@ class _LoginPageState extends State<LoginPage> {
                     }
 
                     if (value.length < 6) {
-                      return 'La contraseña debe tener mínimo 6 caracteres';
+                      return 'La contraseña debe tener al menos 6 caracteres';
                     }
 
                     return null;
@@ -176,8 +179,8 @@ class _LoginPageState extends State<LoginPage> {
                       'Iniciar sesión',
                       style: TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
                         fontSize: 16,
+                        fontWeight: FontWeight.bold,
                         decoration: TextDecoration.none,
                       ),
                     ),
@@ -189,7 +192,7 @@ class _LoginPageState extends State<LoginPage> {
                 Center(
                   child: TextButton(
                     onPressed: () {
-                      Navigator.push(
+                      Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const RegisterPage(),

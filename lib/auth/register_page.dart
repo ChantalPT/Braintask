@@ -29,23 +29,22 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  Future<void> _registrarUsuario() async {
-    if (!_formKey.currentState!.validate()) return;
+void _registrarUsuario() {
+  if (!_formKey.currentState!.validate()) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Usuario registrado correctamente'),
-      ),
-    );
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Registro validado correctamente'),
+    ),
+  );
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const LoginPage(),
-      ),
-    );
-  }
-
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const LoginPage(),
+    ),
+  );
+}
   InputDecoration _inputDecoration({
     required String label,
     required IconData icon,
@@ -143,11 +142,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     if (value == null || value.trim().isEmpty) {
                       return 'Ingresa tu correo electrónico';
                     }
-
                     if (!value.contains('@')) {
                       return 'Ingresa un correo válido';
                     }
-
                     return null;
                   },
                 ),
@@ -177,11 +174,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     if (value == null || value.isEmpty) {
                       return 'Ingresa una contraseña';
                     }
-
                     if (value.length < 6) {
                       return 'La contraseña debe tener al menos 6 caracteres';
                     }
-
                     return null;
                   },
                 ),
@@ -212,11 +207,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     if (value == null || value.isEmpty) {
                       return 'Confirma tu contraseña';
                     }
-
                     if (value != _passwordController.text) {
                       return 'Las contraseñas no coinciden';
                     }
-
                     return null;
                   },
                 ),
