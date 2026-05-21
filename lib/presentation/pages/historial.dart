@@ -163,7 +163,7 @@ class _HistorialState extends State<Historial> {
                     ),
                   ),
                 );
-                _cargarHistorial(); // Recargar al volver (por si cambió estado)
+                _cargarHistorial();
               },
             ),
           );

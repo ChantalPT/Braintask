@@ -461,7 +461,8 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           _buildReputationBadge(),
-          const SizedBox(width: 15), //========================================
+          //=================cambiar proximamente a perfil====================
+          const SizedBox(width: 15),
           IconButton(
             icon: const Icon(Icons.history, color: Colors.black),
             onPressed: () {
@@ -471,7 +472,8 @@ class _HomePageState extends State<HomePage> {
               );
             },
             tooltip: 'Historial',
-          ), //==================================================================
+          ),
+          //==================================================================
         ],
       ),
       body: SingleChildScrollView(
