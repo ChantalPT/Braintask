@@ -1,5 +1,6 @@
 import 'package:braintask/presentation/pages/home_page.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -16,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _ocultarPassword = true;
+  bool _cargando = false;
 
   @override
   void dispose() {
@@ -24,12 +26,46 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _iniciarSesion() {
-    if (_formKey.currentState!.validate()) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+  Future<void> _iniciarSesion() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_cargando) return;
+    setState(() => _cargando = true);
+
+    try {
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: _correoController.text.trim(),
+        password: _passwordController.text.trim(),
       );
+
+      if (response.user != null) {
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      } else {
+        throw Exception('Usuario o contraseña incorrecta');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      String mensaje = 'Error al iniciar sesión';
+      if (error is AuthException) {
+        if (error.message.contains('Invalid login credentials')) {
+          mensaje = 'Correo o contraseña incorrectos';
+        } else if (error.message.contains('Email not confirmed')) {
+          mensaje =
+              'Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada o spawn';
+        } else if (error.message.contains('rate limit')) {
+          mensaje = 'Demasiados intentos. Espera un momento e intenta de nuevo';
+        } else {
+          mensaje = error.message;
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _cargando = false);
     }
   }
 
