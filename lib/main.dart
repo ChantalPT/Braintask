@@ -1,3 +1,4 @@
+import 'package:braintask/presentation/pages/pantalla_carga.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 //import 'auth/register_page.dart';
@@ -28,7 +29,7 @@ class MyApp extends StatelessWidget {
       ),
 
       //home: HomePage(),
-      home: const LoginPage(),
+      home: const PantallaCarga(),
     );
   }
 }
