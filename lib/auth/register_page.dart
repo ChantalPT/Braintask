@@ -233,7 +233,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       return 'Ingresa tu cédula';
                     if (!RegExp(r'^[0-9]+$').hasMatch(value.trim()))
                       return 'Solo números';
-                    if (value.trim().length < 6) return 'Mínimo 6 dígitos';
+                    if (value.trim().length < 7) return 'Mínimo 7 dígitos';
                     return null;
                   },
                 ),
@@ -253,7 +253,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       return 'Ingresa tu carnet';
                     if (!RegExp(r'^[0-9]+$').hasMatch(value.trim()))
                       return 'Solo números';
-                    if (value.trim().length < 5) return 'Mínimo 10 dígitos';
+                    if (value.trim().length < 10) return 'Mínimo 10 dígitos';
                     return null;
                   },
                 ),
