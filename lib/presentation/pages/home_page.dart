@@ -1,3 +1,4 @@
+import 'package:braintask/presentation/pages/historial.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 
@@ -458,7 +459,20 @@ class _HomePageState extends State<HomePage> {
           'Braintask',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
-        actions: [_buildReputationBadge(), const SizedBox(width: 15)],
+        actions: [
+          _buildReputationBadge(),
+          const SizedBox(width: 15), //========================================
+          IconButton(
+            icon: const Icon(Icons.history, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const Historial()),
+              );
+            },
+            tooltip: 'Historial',
+          ), //==================================================================
+        ],
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
