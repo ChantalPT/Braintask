@@ -1,3 +1,4 @@
+import 'package:braintask/presentation/pages/detalle_publicacion.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -116,7 +117,57 @@ class _HistorialState extends State<Historial> {
       child: ListView.builder(
         padding: const EdgeInsets.all(12),
         itemCount: items.length,
-        itemBuilder: (context, index) {},
+        itemBuilder: (context, index) {
+          final pub = items[index];
+          final materiaNombre =
+              pub['materias']?['nombre_materias'] ?? 'Materia desconocida';
+          final estado = pub['estado'] ?? 'pendiente';
+          final estadoLabel = estado == 'pendiente' ? 'Pendiente' : 'Resuelto';
+          final icono = tipo == 'pedido'
+              ? (estado == 'pendiente' ? Icons.edit_note : Icons.check_circle)
+              : Icons.assignment_turned_in;
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: ListTile(
+              leading: Icon(icono, color: const Color(0xFF007BFF)),
+              title: Text(
+                pub['titulo'] ?? 'Sin título',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$materiaNombre • ${pub['puntuacion']} pts'),
+                  const SizedBox(height: 4),
+                  Chip(
+                    label: Text(estadoLabel),
+                    backgroundColor: estado == 'pendiente'
+                        ? Colors.orange[100]
+                        : Colors.green[100],
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+              trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DetallePublicacionPage(
+                      publicacionId: pub['id_publicacion'],
+                    ),
+                  ),
+                );
+                _cargarHistorial(); // Recargar al volver (por si cambió estado)
+              },
+            ),
+          );
+        },
       ),
     );
   }
