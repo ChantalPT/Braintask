@@ -1,8 +1,6 @@
 import 'package:braintask/presentation/pages/pantalla_carga.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-//import 'auth/register_page.dart';
-import 'auth/login_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
