@@ -1,5 +1,6 @@
+import 'package:braintask/presentation/pages/home_page.dart';
 import 'package:flutter/material.dart';
-import '../home_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -16,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _ocultarPassword = true;
+  bool _cargando = false;
 
   @override
   void dispose() {
@@ -24,16 +26,48 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
- void _iniciarSesion() {
-  if (!_formKey.currentState!.validate()) return;
+  Future<void> _iniciarSesion() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_cargando) return;
+    setState(() => _cargando = true);
 
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (context) => HomePage(),
-    ),
-  );
-}
+    try {
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: _correoController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      if (response.user != null) {
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      } else {
+        throw Exception('Usuario o contraseña incorrecta');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      String mensaje = 'Error al iniciar sesión';
+      if (error is AuthException) {
+        if (error.message.contains('Invalid login credentials')) {
+          mensaje = 'Correo o contraseña incorrectos';
+        } else if (error.message.contains('Email not confirmed')) {
+          mensaje =
+              'Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada o spawn';
+        } else if (error.message.contains('rate limit')) {
+          mensaje = 'Demasiados intentos. Espera un momento e intenta de nuevo';
+        } else {
+          mensaje = error.message;
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
 
   InputDecoration _inputDecoration({
     required String label,
@@ -46,21 +80,15 @@ class _LoginPageState extends State<LoginPage> {
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: Colors.white,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(color: Colors.grey.shade300),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Color(0xFF007BFF),
-          width: 1.5,
-        ),
+        borderSide: const BorderSide(color: Color(0xFF007BFF), width: 1.5),
       ),
     );
   }
@@ -70,12 +98,12 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
+        backgroundColor: const Color(0xFF007BFF),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           'Inicio de sesión',
           style: TextStyle(color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF007BFF),
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -94,18 +122,15 @@ class _LoginPageState extends State<LoginPage> {
                     decoration: TextDecoration.none,
                   ),
                 ),
-
                 const SizedBox(height: 8),
-
                 const Text(
-                  'Inicia sesión para acceder a tu perfil, ejercicios publicados y soluciones recibidas.',
+                  'Inicia sesión para acceder a tu cuenta y continuar utilizando la plataforma.',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey,
                     decoration: TextDecoration.none,
                   ),
                 ),
-
                 const SizedBox(height: 28),
 
                 TextFormField(
@@ -117,7 +142,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Ingresa tu correo electrónico';
+                      return 'Ingresa tu correo';
                     }
 
                     if (!value.contains('@')) {
@@ -155,7 +180,7 @@ class _LoginPageState extends State<LoginPage> {
                     }
 
                     if (value.length < 6) {
-                      return 'La contraseña debe tener al menos 6 caracteres';
+                      return 'La contraseña debe tener mínimo 6 caracteres';
                     }
 
                     return null;
@@ -179,8 +204,8 @@ class _LoginPageState extends State<LoginPage> {
                       'Iniciar sesión',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        fontSize: 16,
                         decoration: TextDecoration.none,
                       ),
                     ),
@@ -192,7 +217,7 @@ class _LoginPageState extends State<LoginPage> {
                 Center(
                   child: TextButton(
                     onPressed: () {
-                      Navigator.pushReplacement(
+                      Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const RegisterPage(),

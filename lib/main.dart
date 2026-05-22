@@ -1,8 +1,6 @@
+import 'package:braintask/presentation/pages/pantalla_carga.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'home_page.dart'; 
-import 'auth/login_page.dart';
-import 'auth/register_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +25,9 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const LoginPage(),
+
+      //home: HomePage(),
+      home: const PantallaCarga(),
     );
   }
 }
