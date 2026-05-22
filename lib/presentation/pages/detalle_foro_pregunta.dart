@@ -228,7 +228,9 @@ class _DetalleForoPreguntaPageState
                         .responder(text);
                     _replyController.clear();
                     // Close keyboard
-                    FocusScope.of(context).unfocus();
+                    if (context.mounted) {
+                      FocusScope.of(context).unfocus();
+                    }
                   }
                 },
               ),

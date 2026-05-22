@@ -1,6 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/models/foro_respuesta.dart';
-import '../../data/repositories/foro_repository.dart';
 import 'foro_provider.dart';
 
 part 'foro_respuestas_provider.g.dart';
