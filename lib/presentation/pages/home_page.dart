@@ -8,6 +8,7 @@ import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
 import 'filtro.dart';
 import 'help_support_page.dart';
+import 'foro_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -426,6 +427,19 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onBottomNavTap(int index) async {
+    if (index == 1) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ForoPage()),
+      );
+      // Reset index to current if we navigated back, or keep it depending on UX design.
+      // For now, let's keep the home page as 0 when returning.
+      setState(() {
+        _currentIndex = 0;
+      });
+      return;
+    }
+
     if (index == 2) {
       await Navigator.push(
         context,

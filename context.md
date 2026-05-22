@@ -36,7 +36,11 @@ We use a **Model-View-Controller (MVC)** pattern implemented with **Riverpod**:
 
 ## 🧑‍💻 Coding Conventions & Rules
 - **State Management**: **Riverpod** (Functional/Generator style preferred).
-- **Code Generation**: Use `riverpod_generator` and `build_runner`.
+- **Code Generation**: Use `riverpod_generator` and `build_runner`. ALWAYS use the modern command `dart run build_runner build -d` to generate files. Do NOT use the deprecated `flutter pub run build_runner` commands. If `dart run` is not recognized by the terminal, prompt the user to ensure the Flutter `bin` directory is fully added to their system PATH instead of falling back to deprecated commands.
 - **Error Handling**: Catch Supabase exceptions in the Repository (Model) and expose `AsyncValue` or custom error states in the Notifier (Controller).
 - **Null Safety**: Rely on strict null safety. Use early returns and avoid the `!` operator where possible.
 - **Testing Rules**: Every Notifier in `lib/logic/` must have a unit test. Mock repositories for logic tests. Critical UI flows must have widget tests using the `Given -> When -> Then` naming pattern.
+
+## 🛑 AI Assumption & Context Rules
+- **DO NOT MAKE ASSUMPTIONS ABOUT THE DATABASE**: If you need to write queries for Supabase or work with data models but do not know the exact schema (tables, columns, foreign keys), **do not generate mock data or invent table names**. Instead, halt and explicitly ASK the user to provide the table structure.
+- **Missing Information**: If you lack any critical context (like environment configurations, specific package versions, or UI design details) that prevents a fully functional response, stop and ask for it. Better to ask than to create unnecessary replacement work.
