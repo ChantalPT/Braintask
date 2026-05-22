@@ -9,6 +9,7 @@ import 'detalle_publicacion.dart';
 import 'filtro.dart';
 import 'help_support_page.dart';
 import 'foro_page.dart';
+import 'pantalla_carga.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -486,6 +487,19 @@ class _HomePageState extends State<HomePage> {
               );
             },
             tooltip: 'Historial',
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.black),
+            onPressed: () async {
+              await Supabase.instance.client.auth.signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const PantallaCarga()),
+                  (route) => false,
+                );
+              }
+            },
+            tooltip: 'Cerrar sesión',
           ),
           //==================================================================
         ],

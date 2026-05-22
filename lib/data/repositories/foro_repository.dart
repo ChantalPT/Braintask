@@ -16,7 +16,7 @@ class ForoRepository {
       descripcion,
       puntuacion,
       tiempo,
-      autor:usuarios!publicaciones_autor_id_fkey(nombre, apellido)
+      autor:usuarios(nombre, apellido)
     ''');
     if (search != null && search.isNotEmpty) {
       query = query.ilike('titulo', '%$search%');
