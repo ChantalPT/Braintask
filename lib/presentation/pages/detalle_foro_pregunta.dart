@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/foro_pregunta.dart';
 import '../../logic/providers/foro_respuestas_provider.dart';
+import '../../logic/providers/foro_provider.dart';
 
 class DetalleForoPreguntaPage extends ConsumerStatefulWidget {
   final ForoPregunta pregunta;
@@ -25,8 +26,15 @@ class _DetalleForoPreguntaPageState
 
   @override
   Widget build(BuildContext context) {
+    // Buscar la pregunta actualizada en el estado del proveedor
+    final listaPreguntas = ref.watch(foroPreguntasProvider).value ?? [];
+    final currentPregunta = listaPreguntas.firstWhere(
+      (p) => p.id == widget.pregunta.id,
+      orElse: () => widget.pregunta,
+    );
+
     final respuestasAsync = ref.watch(
-      foroRespuestasProvider(widget.pregunta.id),
+      foroRespuestasProvider(currentPregunta.id),
     );
 
     return Scaffold(
@@ -45,7 +53,7 @@ class _DetalleForoPreguntaPageState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildPreguntaCompleta(context),
+                  _buildPreguntaCompleta(context, currentPregunta),
                   const Divider(height: 32),
                   const Text(
                     'Respuestas',
@@ -73,13 +81,16 @@ class _DetalleForoPreguntaPageState
               ),
             ),
           ),
-          _buildReplyBox(context),
+          _buildReplyBox(context, currentPregunta),
         ],
       ),
     );
   }
 
-  Widget _buildPreguntaCompleta(BuildContext context) {
+  Widget _buildPreguntaCompleta(
+    BuildContext context,
+    ForoPregunta preguntaActual,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -91,18 +102,73 @@ class _DetalleForoPreguntaPageState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Publicado por ${widget.pregunta.autorNombre} • ${widget.pregunta.tiempo.day}/${widget.pregunta.tiempo.month}/${widget.pregunta.tiempo.year}',
+            'Publicado por ${preguntaActual.autorNombre} • ${preguntaActual.tiempo.day}/${preguntaActual.tiempo.month}/${preguntaActual.tiempo.year}',
             style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
           ),
           const SizedBox(height: 8),
           Text(
-            widget.pregunta.titulo,
+            preguntaActual.titulo,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Text(
-            widget.pregunta.descripcion,
+            preguntaActual.descripcion,
             style: const TextStyle(fontSize: 15, height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          // Botones de votar para la pregunta
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.thumb_up,
+                  color: preguntaActual.userVote == 1
+                      ? Colors.blue
+                      : Colors.grey,
+                ),
+                onPressed: () async {
+                  try {
+                    await ref
+                        .read(foroPreguntasProvider.notifier)
+                        .votar(preguntaActual.id, true);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error al votar: $e')),
+                      );
+                    }
+                  }
+                },
+              ),
+              Text(
+                '${preguntaActual.votos}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.thumb_down,
+                  color: preguntaActual.userVote == -1
+                      ? Colors.red
+                      : Colors.grey,
+                ),
+                onPressed: () async {
+                  try {
+                    await ref
+                        .read(foroPreguntasProvider.notifier)
+                        .votar(preguntaActual.id, false);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error al votar: $e')),
+                      );
+                    }
+                  }
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -126,9 +192,9 @@ class _DetalleForoPreguntaPageState
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                icon: const Icon(
-                  Icons.arrow_upward,
-                  color: Colors.grey,
+                icon: Icon(
+                  Icons.thumb_up,
+                  color: respuesta.userVote == 1 ? Colors.blue : Colors.grey,
                   size: 20,
                 ),
                 onPressed: () {
@@ -147,9 +213,9 @@ class _DetalleForoPreguntaPageState
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                icon: const Icon(
-                  Icons.arrow_downward,
-                  color: Colors.grey,
+                icon: Icon(
+                  Icons.thumb_down,
+                  color: respuesta.userVote == -1 ? Colors.red : Colors.grey,
                   size: 20,
                 ),
                 onPressed: () {
@@ -182,7 +248,7 @@ class _DetalleForoPreguntaPageState
     );
   }
 
-  Widget _buildReplyBox(BuildContext context) {
+  Widget _buildReplyBox(BuildContext context, ForoPregunta preguntaActual) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: Colors.white,
@@ -221,15 +287,22 @@ class _DetalleForoPreguntaPageState
                 onPressed: () async {
                   final text = _replyController.text;
                   if (text.trim().isNotEmpty) {
-                    await ref
-                        .read(
-                          foroRespuestasProvider(widget.pregunta.id).notifier,
-                        )
-                        .responder(text);
-                    _replyController.clear();
-                    // Close keyboard
-                    if (context.mounted) {
-                      FocusScope.of(context).unfocus();
+                    try {
+                      await ref
+                          .read(
+                            foroRespuestasProvider(preguntaActual.id).notifier,
+                          )
+                          .responder(preguntaActual.id, text);
+                      _replyController.clear();
+                      if (context.mounted) {
+                        FocusScope.of(context).unfocus();
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error al enviar: $e')),
+                        );
+                      }
                     }
                   }
                 },

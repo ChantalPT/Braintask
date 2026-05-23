@@ -5,6 +5,7 @@ class ForoRespuesta {
   final String autorNombre;
   final int votos;
   final DateTime tiempo;
+  final int userVote; // 1 = upvote, -1 = downvote, 0 = sin voto
 
   ForoRespuesta({
     required this.id,
@@ -13,6 +14,7 @@ class ForoRespuesta {
     required this.autorNombre,
     required this.votos,
     required this.tiempo,
+    this.userVote = 0,
   });
 
   factory ForoRespuesta.fromJson(Map<String, dynamic> json) {
@@ -37,7 +39,7 @@ class ForoRespuesta {
     );
   }
 
-  ForoRespuesta copyWith({int? votos}) {
+  ForoRespuesta copyWith({int? votos, int? userVote}) {
     return ForoRespuesta(
       id: id,
       idPregunta: idPregunta,
@@ -45,6 +47,7 @@ class ForoRespuesta {
       autorNombre: autorNombre,
       votos: votos ?? this.votos,
       tiempo: tiempo,
+      userVote: userVote ?? this.userVote,
     );
   }
 }

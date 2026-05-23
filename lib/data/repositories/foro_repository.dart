@@ -14,9 +14,10 @@ class ForoRepository {
       id_publicacion,
       titulo,
       descripcion,
-      puntuacion,
+      votos_foro,
       tiempo,
-      autor:usuarios(nombre, apellido)
+      autor:usuarios(nombre, apellido),
+      foro_respuestas(id_respuesta)
     ''');
     if (search != null && search.isNotEmpty) {
       query = query.ilike('titulo', '%$search%');
@@ -43,16 +44,16 @@ class ForoRepository {
   }
 
   Future<void> votarPregunta(int id, bool isUpvote) async {
-    // Votamos en la tabla de publicaciones usando puntuacion
+    // Votamos en la tabla de publicaciones usando la nueva columna votos_foro
     final current = await _supabase
         .from('publicaciones')
-        .select('puntuacion')
+        .select('votos_foro')
         .eq('id_publicacion', id)
         .single();
-    final currentScore = (current['puntuacion'] as int?) ?? 0;
+    final currentScore = (current['votos_foro'] as int?) ?? 0;
     await _supabase
         .from('publicaciones')
-        .update({'puntuacion': isUpvote ? currentScore + 1 : currentScore - 1})
+        .update({'votos_foro': isUpvote ? currentScore + 1 : currentScore - 1})
         .eq('id_publicacion', id);
   }
 

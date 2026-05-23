@@ -109,38 +109,6 @@ class ForoPage extends ConsumerWidget {
           children: [
             // Reddit-style Upvotes left column -> wait, making it horizontal below is fine too,
             // but standard Reddit usually has upvotes on left side. Or like SO. Let's put it on left
-            Column(
-              children: [
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.arrow_upward, color: Colors.grey),
-                  onPressed: () {
-                    ref
-                        .read(foroPreguntasProvider.notifier)
-                        .votar(pregunta.id, true);
-                  },
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Text(
-                    '${pregunta.votos}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.arrow_downward, color: Colors.grey),
-                  onPressed: () {
-                    ref
-                        .read(foroPreguntasProvider.notifier)
-                        .votar(pregunta.id, false);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,17 +134,30 @@ class ForoPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(
-                        Icons.chat_bubble_outline,
-                        size: 16,
-                        color: Colors.grey,
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.chat_bubble_outline,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${pregunta.respuestasCount} respuestas',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
                       Text(
-                        '${pregunta.respuestasCount} respuestas',
+                        'Puntuación: ${pregunta.votos}',
                         style: const TextStyle(
-                          color: Colors.grey,
+                          color: Colors.black87,
+                          fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
                       ),
