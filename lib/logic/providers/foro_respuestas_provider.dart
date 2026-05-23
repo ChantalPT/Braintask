@@ -10,8 +10,10 @@ class ForoRespuestas extends _$ForoRespuestas {
   @override
   FutureOr<List<ForoRespuesta>> build(int idPregunta) async {
     final prefs = await SharedPreferences.getInstance();
-    final data = await ref.read(foroRepositoryProvider).getRespuestas(idPregunta);
-    
+    final data = await ref
+        .read(foroRepositoryProvider)
+        .getRespuestas(idPregunta);
+
     return data.map((r) {
       final savedVote = prefs.getInt('respuesta_vote_${r.id}') ?? 0;
       return r.copyWith(userVote: savedVote);
@@ -47,12 +49,18 @@ class ForoRespuestas extends _$ForoRespuestas {
       }).toList(),
     );
 
-    final repo = ref.read(foroRepositoryProvider);
-    if (resp.userVote != 0) {
-      await repo.votarRespuesta(id, isUpvote);
-      await repo.votarRespuesta(id, isUpvote);
-    } else {
-      await repo.votarRespuesta(id, isUpvote);
+    try {
+      final repo = ref.read(foroRepositoryProvider);
+      if (resp.userVote != 0) {
+        await repo.votarRespuesta(id, isUpvote);
+        await repo.votarRespuesta(id, isUpvote);
+      } else {
+        await repo.votarRespuesta(id, isUpvote);
+      }
+    } catch (e) {
+      await prefs.setInt('respuesta_vote_$id', resp.userVote);
+      state = AsyncData(priorState);
+      rethrow;
     }
   }
 

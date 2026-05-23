@@ -23,8 +23,7 @@ class ForoPreguntas extends _$ForoPreguntas {
     final data = await ref
         .read(foroRepositoryProvider)
         .getPreguntas(search: _searchQuery);
-    
-    // Inyectamos el voto guardado localmente para que no se pierda al salir
+
     return data.map((p) {
       final savedVote = prefs.getInt('pregunta_vote_${p.id}') ?? 0;
       return p.copyWith(userVote: savedVote);
@@ -69,12 +68,19 @@ class ForoPreguntas extends _$ForoPreguntas {
       }).toList(),
     );
 
-    final repo = ref.read(foroRepositoryProvider);
-    if (pub.userVote != 0) {
-      await repo.votarPregunta(id, isUpvote);
-      await repo.votarPregunta(id, isUpvote);
-    } else {
-      await repo.votarPregunta(id, isUpvote);
+    try {
+      final repo = ref.read(foroRepositoryProvider);
+      if (pub.userVote != 0) {
+        await repo.votarPregunta(id, isUpvote);
+        await repo.votarPregunta(id, isUpvote);
+      } else {
+        await repo.votarPregunta(id, isUpvote);
+      }
+    } catch (e) {
+      // Rollback en caso de error
+      await prefs.setInt('pregunta_vote_$id', pub.userVote);
+      state = AsyncData(priorState);
+      rethrow;
     }
   }
 

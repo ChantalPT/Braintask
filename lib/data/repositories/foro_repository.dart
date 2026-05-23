@@ -51,10 +51,18 @@ class ForoRepository {
         .eq('id_publicacion', id)
         .single();
     final currentScore = (current['votos_foro'] as int?) ?? 0;
-    await _supabase
+
+    final updateResult = await _supabase
         .from('publicaciones')
         .update({'votos_foro': isUpvote ? currentScore + 1 : currentScore - 1})
-        .eq('id_publicacion', id);
+        .eq('id_publicacion', id)
+        .select();
+
+    if (updateResult.isEmpty) {
+      throw Exception(
+        'El voto no se guardó. Posible problema de permisos RLS en Supabase en la tabla "publicaciones".',
+      );
+    }
   }
 
   Future<void> votarRespuesta(int id, bool isUpvote) async {
@@ -65,10 +73,18 @@ class ForoRepository {
         .eq('id_respuesta', id)
         .single();
     final currentScore = (current['votos'] as int?) ?? 0;
-    await _supabase
+
+    final updateResult = await _supabase
         .from('foro_respuestas')
         .update({'votos': isUpvote ? currentScore + 1 : currentScore - 1})
-        .eq('id_respuesta', id);
+        .eq('id_respuesta', id)
+        .select();
+
+    if (updateResult.isEmpty) {
+      throw Exception(
+        'El voto no se guardó. Posible problema de permisos RLS en Supabase en la tabla "foro_respuestas".',
+      );
+    }
   }
 
   Future<void> agregarRespuesta(int idPregunta, String contenido) async {
