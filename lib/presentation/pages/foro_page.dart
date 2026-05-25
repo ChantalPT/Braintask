@@ -13,6 +13,7 @@ class ForoPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
@@ -75,7 +76,7 @@ class ForoPage extends ConsumerWidget {
                   ref.read(foroPreguntasProvider.notifier).search(value);
                 },
                 decoration: const InputDecoration(
-                  hintText: 'Buscar preguntas, tags, temas...',
+                  hintText: 'Buscar pregunta',
                   border: InputBorder.none,
                 ),
               ),

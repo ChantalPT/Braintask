@@ -427,44 +427,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _onBottomNavTap(int index) async {
-    if (index == 1) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ForoPage()),
-      );
-      // Reset index to current if we navigated back, or keep it depending on UX design.
-      // For now, let's keep the home page as 0 when returning.
-      setState(() {
-        _currentIndex = 0;
-      });
-      return;
-    }
-
-    if (index == 2) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const PublicarPage()),
-      );
-      _cargarPublicaciones();
-      return;
-    }
-
-    if (index == 4) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const HelpSupportPage()),
-      );
-      return;
-    }
-
+  void _onBottomNavTap(int index) {
     setState(() {
       _currentIndex = index;
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildHomeContent(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -474,6 +443,7 @@ class _HomePageState extends State<HomePage> {
           'Braintask',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
+        automaticallyImplyLeading: false,
         actions: [
           _buildReputationBadge(),
           //=================cambiar proximamente a perfil====================
@@ -548,6 +518,28 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      _buildHomeContent(context),
+      const ForoPage(),
+      PublicarPage(
+        onSubmitSuccess: () {
+          setState(() {
+            _currentIndex = 0;
+          });
+          _cargarPublicaciones();
+        },
+      ),
+      const Scaffold(body: Center(child: Text("Perfil en construcción"))),
+      const HelpSupportPage(),
+    ];
+
+    return Scaffold(
+      body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: _onBottomNavTap,

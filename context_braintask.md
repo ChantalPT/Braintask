@@ -3,11 +3,11 @@
 **App**: Braintask (Q&A educational app for students).
 **Stack**: Flutter (Dart), Supabase, `image_picker`, `file_picker`.
 
-## Architecture (MVC + Riverpod)
+## Architecture (MVVM + Riverpod)
 - `lib/presentation/` (View): UI/Widgets. Uses `ConsumerWidget`/`ConsumerStatefulWidget`. NO business logic.
-- `lib/logic/` (Controller): Riverpod Notifiers. Bridges View & Model. Manages state/intents.
+- `lib/logic/` (ViewModel / State): Riverpod Notifiers. Bridges View & Model. Manages state/intents.
 - `lib/data/` (Model): DTOs & Repositories. Handles all Supabase DB calls.
-- `lib/auth/`: Auth-specific MVC.
+- `lib/auth/`: Auth-specific MVVM.
 
 ## Conventions
 - **State**: Riverpod (Generator style preferred).
