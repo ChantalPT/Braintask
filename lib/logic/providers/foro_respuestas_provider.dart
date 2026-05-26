@@ -20,7 +20,8 @@ class ForoRespuestas extends _$ForoRespuestas {
     }).toList();
   }
 
-  Future<void> votar(int id, bool isUpvote) async {
+  // --- NUEVA FUNCIÓN PARA VOTAR CON ESTRELLAS ---
+  Future<void> calificar(int id, int estrellas) async {
     final priorState = state.value;
     if (priorState == null) return;
 
@@ -29,21 +30,24 @@ class ForoRespuestas extends _$ForoRespuestas {
 
     final resp = priorState[respIndex];
 
-    final targetVote = isUpvote ? 1 : -1;
-    if (resp.userVote == targetVote) return;
-
-    int difference = targetVote;
-    if (resp.userVote != 0) {
-      difference = targetVote * 2;
-    }
+    // Si ya calificó esta respuesta, no hacemos nada
+    if (resp.userVote != 0) return;
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('respuesta_vote_$id', targetVote);
+    await prefs.setInt('respuesta_vote_$id', estrellas);
+
+    // Recálculo matemático en vivo (Optimistic UI)
+    final totalVotosNuevos = resp.totalVotos + 1;
+    final nuevoPromedio = ((resp.promedioEstrellas * resp.totalVotos) + estrellas) / totalVotosNuevos;
 
     state = AsyncData(
       priorState.map((r) {
         if (r.id == id) {
-          return r.copyWith(votos: r.votos + difference, userVote: targetVote);
+          return r.copyWith(
+            promedioEstrellas: nuevoPromedio,
+            totalVotos: totalVotosNuevos,
+            userVote: estrellas,
+          );
         }
         return r;
       }).toList(),
@@ -51,14 +55,10 @@ class ForoRespuestas extends _$ForoRespuestas {
 
     try {
       final repo = ref.read(foroRepositoryProvider);
-      if (resp.userVote != 0) {
-        await repo.votarRespuesta(id, isUpvote);
-        await repo.votarRespuesta(id, isUpvote);
-      } else {
-        await repo.votarRespuesta(id, isUpvote);
-      }
+      await repo.calificarRespuesta(id, estrellas);
     } catch (e) {
-      await prefs.setInt('respuesta_vote_$id', resp.userVote);
+      // Rollback si la BD falla
+      await prefs.remove('respuesta_vote_$id');
       state = AsyncData(priorState);
       rethrow;
     }
@@ -68,12 +68,12 @@ class ForoRespuestas extends _$ForoRespuestas {
     if (contenido.trim().isEmpty) return;
 
     final repo = ref.read(foroRepositoryProvider);
-    await repo.agregarRespuesta(preguntaId, contenido.trim());
-
-    // Agregamos localmente al contador de la pregunta en la UI
-    ref.read(foroPreguntasProvider.notifier).incrementAnswers(preguntaId);
-
-    // Invalidamos para que recargue las respuestas
+    await repo.agregarRespuesta(preguntaId, contenido);
+    
+    // Invalida para recargar de la BD
     ref.invalidateSelf();
+    
+    // Invalida el contador de preguntas en el foro principal
+    ref.invalidate(foroPreguntasProvider);
   }
 }

@@ -293,6 +293,10 @@ class _HomePageState extends State<HomePage> {
     if (descripcionPreview.isEmpty) {
       descripcionPreview = 'Sin descripción';
     }
+
+    // EVALUACIÓN DEL ESTADO DINÁMICO PARA TU HU-06
+    final bool estaResuelto = pub.estado.toLowerCase() == 'resuelto';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -365,6 +369,22 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ],
                         ),
+                        // Pequeño indicador visual del estado (Aporte para la Heurística #1: Visibilidad)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: estaResuelto ? Colors.green.shade50 : Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            estaResuelto ? 'Resuelto' : 'Pendiente',
+                            style: TextStyle(
+                              color: estaResuelto ? Colors.green.shade700 : Colors.orange.shade700,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -377,43 +397,76 @@ class _HomePageState extends State<HomePage> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(
-                        height: 28,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DetallePublicacionPage(
-                                  publicacionId: pub.id,
+                      if (!estaResuelto) ...[
+                        
+                        SizedBox(
+                          height: 28,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => DetallePublicacionPage(
+                                    publicacionId: pub.id,
+                                  ),
                                 ),
-                              ),
-                            );
-                            _cargarPublicaciones();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF007BFF),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            textStyle: const TextStyle(fontSize: 11),
+                              );
+                              _cargarPublicaciones();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF007BFF),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                            child: const Text('Resolver'),
                           ),
-                          child: const Text('Resolver'),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      SizedBox(
-                        height: 28,
-                        child: OutlinedButton(
-                          onPressed: () {}, // Foro action
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF007BFF),
-                            side: const BorderSide(color: Color(0xFF007BFF)),
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            textStyle: const TextStyle(fontSize: 11),
+                      ] else ...[
+                      
+                        SizedBox(
+                          height: 28,
+                          child: OutlinedButton(
+                            onPressed: () {
+                             
+                              setState(() {
+                                _currentIndex = 1;
+                              });
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF007BFF),
+                              side: const BorderSide(color: Color(0xFF007BFF)),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              textStyle: const TextStyle(fontSize: 11),
+                            ),
+                            child: const Text('Ir al foro'),
                           ),
-                          child: const Text('Foro'),
                         ),
-                      ),
+                        const SizedBox(width: 4),
+                        SizedBox(
+                          height: 28,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => DetallePublicacionPage(
+                                    publicacionId: pub.id,
+                                  ),
+                                ),
+                              );
+                              _cargarPublicaciones();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green.shade600,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              textStyle: const TextStyle(fontSize: 11),
+                            ),
+                            child: const Text('Resolver'),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -426,7 +479,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
   void _onBottomNavTap(int index) {
     setState(() {
       _currentIndex = index;

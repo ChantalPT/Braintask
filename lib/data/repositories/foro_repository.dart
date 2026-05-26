@@ -8,8 +8,6 @@ class ForoRepository {
   ForoRepository(this._supabase);
 
   Future<List<ForoPregunta>> getPreguntas({String? search}) async {
-    // Usamos la tabla "publicaciones" como la tabla de Preguntas para el foro
-    // Hacemos join con "usuarios" a través de autor_id para obtener el nombre.
     var query = _supabase.from('publicaciones').select('''
       id_publicacion,
       titulo,
@@ -26,64 +24,47 @@ class ForoRepository {
     return (data as List).map((e) => ForoPregunta.fromJson(e)).toList();
   }
 
+  // --- MODIFICADO PARA EXTRAER LAS ESTRELLAS ---
   Future<List<ForoRespuesta>> getRespuestas(int idPregunta) async {
-    // Usamos una nueva tabla "foro_respuestas"
     final data = await _supabase
         .from('foro_respuestas')
         .select('''
           id_respuesta,
           id_publicacion,
           contenido,
-          votos,
           tiempo,
-          usuarios(nombre, apellido)
+          usuarios(nombre, apellido),
+          calificacion_respuestas(estrellas, usuario_id)
         ''')
         .eq('id_publicacion', idPregunta)
-        .order('votos', ascending: false);
+        .order('tiempo', ascending: true);
+        
     return (data as List).map((e) => ForoRespuesta.fromJson(e)).toList();
   }
 
   Future<void> votarPregunta(int id, bool isUpvote) async {
-    // Votamos en la tabla de publicaciones usando la nueva columna votos_foro
-    final current = await _supabase
-        .from('publicaciones')
-        .select('votos_foro')
-        .eq('id_publicacion', id)
-        .single();
+    final current = await _supabase.from('publicaciones').select('votos_foro').eq('id_publicacion', id).single();
     final currentScore = (current['votos_foro'] as int?) ?? 0;
 
-    final updateResult = await _supabase
-        .from('publicaciones')
-        .update({'votos_foro': isUpvote ? currentScore + 1 : currentScore - 1})
-        .eq('id_publicacion', id)
-        .select();
-
-    if (updateResult.isEmpty) {
-      throw Exception(
-        'El voto no se guardó. Posible problema de permisos RLS en Supabase en la tabla "publicaciones".',
-      );
-    }
+    await _supabase.from('publicaciones').update({'votos_foro': isUpvote ? currentScore + 1 : currentScore - 1}).eq('id_publicacion', id);
   }
 
-  Future<void> votarRespuesta(int id, bool isUpvote) async {
-    // Votamos en la tabla de respuestas
-    final current = await _supabase
-        .from('foro_respuestas')
-        .select('votos')
-        .eq('id_respuesta', id)
-        .single();
-    final currentScore = (current['votos'] as int?) ?? 0;
+  // --- NUEVA LÓGICA: CALIFICAR RESPUESTA CON ESTRELLAS ---
+  Future<void> calificarRespuesta(int idRespuesta, int estrellas) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) throw Exception('Usuario no autenticado');
 
-    final updateResult = await _supabase
-        .from('foro_respuestas')
-        .update({'votos': isUpvote ? currentScore + 1 : currentScore - 1})
-        .eq('id_respuesta', id)
+    final insertResult = await _supabase
+        .from('calificacion_respuestas')
+        .insert({
+          'id_respuesta': idRespuesta,
+          'usuario_id': userId,
+          'estrellas': estrellas
+        })
         .select();
 
-    if (updateResult.isEmpty) {
-      throw Exception(
-        'El voto no se guardó. Posible problema de permisos RLS en Supabase en la tabla "foro_respuestas".',
-      );
+    if (insertResult.isEmpty) {
+      throw Exception('El voto no se guardó. Revisa las políticas RLS.');
     }
   }
 
@@ -95,7 +76,6 @@ class ForoRepository {
       'id_publicacion': idPregunta,
       'usuario_id': userId,
       'contenido': contenido,
-      // votos y tiempo tomarán sus valores por defecto
     });
   }
 }
