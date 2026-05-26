@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io' as java_io;
+import 'package:file_picker/file_picker.dart' as file_picker;
 
 class DetallePublicacionPage extends StatefulWidget {
   final int publicacionId;
@@ -13,57 +14,60 @@ class DetallePublicacionPage extends StatefulWidget {
 class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   final _supabase = Supabase.instance.client;
   Map<String, dynamic>? _publicacion;
+  List<Map<String, dynamic>> _soluciones = [];
   bool _cargando = true;
   String? _error;
 
-  // Calificaciones
-  double? _averageDifficulty;
-  int? _userRating;
-  bool _ratingLoading = false;
-  final Set<int> _ratedPublications = {};
+  // Variables para la solución del usuario
+  final TextEditingController _solucionController = TextEditingController();
+  java_io.File? _archivoSolucion;
+  String? _nombreArchivoSolucion;
+  bool _enviandoSolucion = false;
 
   @override
   void initState() {
     super.initState();
-    _cargarCalificacionesLocales();
-    _cargarDetalle();
-    _cargarRatingInfo();
+    _cargarDatos();
   }
 
-  Future<void> _cargarCalificacionesLocales() async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<String>? rated = prefs.getStringList('rated_publications');
-    if (rated != null) {
-      _ratedPublications.addAll(rated.map(int.parse));
-    }
+  @override
+  void dispose() {
+    _solucionController.dispose();
+    super.dispose();
   }
 
-  Future<void> _guardarCalificacionLocal(int rating) async {
-    final prefs = await SharedPreferences.getInstance();
-    _ratedPublications.add(widget.publicacionId);
-    await prefs.setStringList(
-      'rated_publications',
-      _ratedPublications.map((e) => e.toString()).toList(),
-    );
-    await prefs.setInt('rating_${widget.publicacionId}', rating);
-  }
-
-  Future<void> _cargarDetalle() async {
+  Future<void> _cargarDatos() async {
+    setState(() => _cargando = true);
     try {
-      final response = await _supabase
+      // 1. Cargar el detalle del ejercicio
+      final pubData = await _supabase
           .from('publicaciones')
           .select('''
             *,
-            materias!left (
+            materias (
               nombre_materias,
-              id_facultad,
-              facultades!left (nombre_facultad)
+              facultades (nombre_facultad)
             )
           ''')
           .eq('id_publicacion', widget.publicacionId)
           .single();
+
+      // 2. Cargar las soluciones con sus calificaciones (CORREGIDO A SINGULAR)
+      final solData = await _supabase
+          .from('soluciones')
+          .select('''
+            *,
+            calificacion_soluciones (
+              estrellas,
+              usuario_id
+            )
+          ''')
+          .eq('id_publicacion', widget.publicacionId)
+          .order('id_solucion', ascending: false);
+
       setState(() {
-        _publicacion = response;
+        _publicacion = pubData;
+        _soluciones = List<Map<String, dynamic>>.from(solData);
         _cargando = false;
       });
     } catch (e) {
@@ -74,329 +78,397 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     }
   }
 
-  Future<void> _cargarRatingInfo() async {
-    try {
-      final avgData = await _supabase
-          .from('calificaciones_dificultad')
-          .select('dificultad')
-          .eq('id_publicacion', widget.publicacionId);
-
-      if (avgData.isNotEmpty) {
-        final sum = avgData.fold<int>(
-          0,
-          (p, n) => p + (n['dificultad'] as int),
-        );
-        setState(() {
-          _averageDifficulty = sum / avgData.length;
-        });
-      } else {
-        setState(() => _averageDifficulty = null);
-      }
-
-      if (_ratedPublications.contains(widget.publicacionId)) {
-        final prefs = await SharedPreferences.getInstance();
-        final savedRating = prefs.getInt('rating_${widget.publicacionId}');
-        if (savedRating != null) {
-          setState(() => _userRating = savedRating);
-        }
-      }
-    } catch (e) {
-      debugPrint('Error cargando calificaciones: $e');
-    }
-  }
-
-  Future<void> _enviarCalificacion(int rating) async {
-    if (_ratedPublications.contains(widget.publicacionId)) {
+  Future<void> _calificarSolucion(int idSolucion, int estrellas) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ya calificaste este ejercicio anteriormente'),
-        ),
+        const SnackBar(content: Text('Debes iniciar sesión para calificar')),
       );
       return;
     }
 
-    setState(() => _ratingLoading = true);
     try {
-      await _supabase.from('calificaciones_dificultad').insert({
-        'id_publicacion': widget.publicacionId,
-        'dificultad': rating,
+      // Validar si el usuario ya votó por esta solución localmente en la lista
+      final solucion = _soluciones.firstWhere((s) => s['id_solucion'] == idSolucion);
+      final calificaciones = List<Map<String, dynamic>>.from(solucion['calificacion_soluciones'] ?? []);
+      final yaVoto = calificaciones.any((c) => c['usuario_id'] == user.id);
+
+      if (yaVoto) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ya has calificado esta solución')),
+        );
+        return;
+      }
+
+      // Insertar calificación en Supabase (CORREGIDO A SINGULAR)
+      await _supabase.from('calificacion_soluciones').insert({
+        'id_solucion': idSolucion,
+        'usuario_id': user.id,
+        'estrellas': estrellas,
       });
 
-      await _guardarCalificacionLocal(rating);
-      setState(() => _userRating = rating);
-      await _cargarRatingInfo();
+      // Recargar para actualizar los promedios
+      await _cargarDatos();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('¡Gracias! Calificaste con $rating estrella(s)'),
-        ),
-      );
-    } catch (e) {
-      String mensaje = 'Error al guardar: $e';
-      if (e.toString().contains('row-level security')) {
-        mensaje = 'Error de permisos. Contacta al administrador.';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('¡Calificación guardada!'), backgroundColor: Colors.green),
+        );
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
-      );
-    } finally {
-      setState(() => _ratingLoading = false);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al calificar: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
-  Widget _buildRatingSection() {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+  // Lógica para enviar una nueva solución
+  Future<void> _seleccionarArchivoSolucion() async {
+    final resultado = await file_picker.FilePicker.platform.pickFiles(
+      type: file_picker.FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'png', 'jpeg'],
+    );
+
+    if (resultado != null && resultado.files.single.path != null) {
+      setState(() {
+        _archivoSolucion = java_io.File(resultado.files.single.path!);
+        _nombreArchivoSolucion = resultado.files.single.name;
+      });
+    }
+  }
+
+  Future<void> _subirYEnviarSolucion() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    if (_solucionController.text.trim().isEmpty && _archivoSolucion == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, escribe una explicación o adjunta un archivo.')),
+      );
+      return;
+    }
+
+    setState(() => _enviandoSolucion = true);
+    String? urlArchivoSubido;
+
+    try {
+      if (_archivoSolucion != null) {
+        final pathArchivo = 'soluciones/${DateTime.now().millisecondsSinceEpoch}_$_nombreArchivoSolucion';
+        await _supabase.storage.from('publicaciones').upload(pathArchivo, _archivoSolucion!);
+        urlArchivoSubido = _supabase.storage.from('publicaciones').getPublicUrl(pathArchivo);
+      }
+
+      await _supabase.from('soluciones').insert({
+        'id_publicacion': widget.publicacionId,
+        'usuario_id': user.id,
+        'contenido': _solucionController.text.trim(),
+        'archivo_url': urlArchivoSubido,
+        'aceptada': false,
+      });
+
+      _solucionController.clear();
+      setState(() {
+        _archivoSolucion = null;
+        _nombreArchivoSolucion = null;
+      });
+
+      await _cargarDatos();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('¡Solución publicada!'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al enviar: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      setState(() => _enviandoSolucion = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_cargando && _publicacion == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_error != null || _publicacion == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Error')),
+        body: Center(child: Text(_error ?? 'No se encontró la publicación')),
+      );
+    }
+
+    final pub = _publicacion!;
+    final titulo = pub['titulo'] ?? 'Sin título';
+    final descripcion = pub['descripcion'] ?? 'Sin descripción';
+    final puntosBase = pub['puntuacion'] ?? 0;
+    final archivoPubUrl = pub['archivo_url'];
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+        title: const Text(
+          'Detalle del Ejercicio',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Califica la dificultad del ejercicio',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Text('⭐ Promedio: ', style: TextStyle(fontSize: 14)),
-                if (_averageDifficulty != null)
-                  Text(
-                    '${_averageDifficulty!.toStringAsFixed(1)} / 5',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  )
-                else
-                  const Text(
-                    'Sin calificaciones',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text('Tu calificación:', style: TextStyle(fontSize: 14)),
-            const SizedBox(height: 6),
-            _ratingLoading
-                ? const SizedBox(
-                    height: 40,
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                : Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(5, (index) {
-                          int starValue = index + 1;
-                          return IconButton(
-                            icon: Icon(
-                              (_userRating != null && starValue <= _userRating!)
-                                  ? Icons.star
-                                  : Icons.star_border,
-                              color: Colors.amber,
-                              size: 36,
-                            ),
-                            onPressed: () => _enviarCalificacion(starValue),
-                            splashRadius: 24,
-                          );
-                        }),
-                      ),
+            // 1. TARJETA DEL ENUNCIADO (PUBLICACIÓN)
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(titulo, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.monetization_on, color: Colors.orange, size: 18),
+                        const SizedBox(width: 5),
+                        Text('$puntosBase pts base', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                      ],
                     ),
-                  ),
-            if (_userRating != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  'Ya calificaste con $_userRating estrella(s). Solo puedes votar una vez.',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    const Divider(height: 24),
+                    const Text('Enunciado:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const SizedBox(height: 6),
+                    Text(descripcion, style: const TextStyle(fontSize: 15)),
+                    if (archivoPubUrl != null) ...[
+                      const SizedBox(height: 12),
+                      _buildArchivoGrande(archivoPubUrl),
+                    ]
+                  ],
                 ),
               ),
+            ),
+
+            // 2. FORMULARIO PARA SUBIR SOLUCIÓN
+            _buildFormularioSolucion(),
+
+            const SizedBox(height: 20),
+            const Text('Soluciones Propuestas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Divider(),
+
+            // 3. LISTA DE SOLUCIONES DINÁMICAS
+            if (_soluciones.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Center(child: Text('Sé el primero en resolver este ejercicio.', style: TextStyle(color: Colors.grey))),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _soluciones.length,
+                itemBuilder: (context, index) {
+                  return _buildTarjetaSolucion(_soluciones[index], puntosBase);
+                },
+              )
           ],
         ),
       ),
     );
   }
 
-  void _mostrarMensajeEnDesarrollo() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Funcionalidad "Subir respuesta" en desarrollo'),
-        backgroundColor: Colors.orange,
+  Widget _buildTarjetaSolucion(Map<String, dynamic> solucion, int puntosBase) {
+    final contenido = solucion['contenido'] ?? '';
+    final archivoUrl = solucion['archivo_url'];
+    final idSolucion = solucion['id_solucion'];
+    
+    // Cálculo de la fórmula dinámica (CORREGIDO A SINGULAR)
+    final calificaciones = List<Map<String, dynamic>>.from(solucion['calificacion_soluciones'] ?? []);
+    double promedioEstrellas = 0.0;
+    int puntosReales = 0;
+
+    if (calificaciones.isNotEmpty) {
+      final sumaVotos = calificaciones.fold<int>(0, (sum, item) => sum + (item['estrellas'] as int));
+      promedioEstrellas = sumaVotos / calificaciones.length;
+      puntosReales = (puntosBase * (promedioEstrellas / 5)).round(); // Fórmula aplicada
+    }
+
+    // Identificar si el usuario actual ya votó
+    final currentUser = _supabase.auth.currentUser;
+    int? votoUsuarioActual;
+    if (currentUser != null && calificaciones.isNotEmpty) {
+      try {
+        final miVoto = calificaciones.firstWhere((c) => c['usuario_id'] == currentUser.id);
+        votoUsuarioActual = miVoto['estrellas'];
+      } catch (_) {} // No ha votado
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: BorderSide(color: Colors.grey.shade300)
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Solución de un Alumno', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: calificaciones.isEmpty ? Colors.grey.shade200 : Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    calificaciones.isEmpty ? 'Pendiente' : 'Gana $puntosReales pts',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 12,
+                      color: calificaciones.isEmpty ? Colors.grey.shade700 : Colors.green.shade800
+                    ),
+                  ),
+                )
+              ],
+            ),
+            const SizedBox(height: 10),
+            
+            if (contenido.isNotEmpty) Text(contenido, style: const TextStyle(fontSize: 14)),
+            if (archivoUrl != null) ...[
+              const SizedBox(height: 10),
+              _buildArchivoGrande(archivoUrl),
+            ],
+            
+            const Divider(height: 24),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  calificaciones.isEmpty 
+                    ? '0 votos' 
+                    : '${promedioEstrellas.toStringAsFixed(1)} ★ (${calificaciones.length} votos)',
+                  style: const TextStyle(color: Colors.grey, fontSize: 13),
+                ),
+                Row(
+                  children: List.generate(5, (index) {
+                    final starValue = index + 1;
+                    final isFilled = (votoUsuarioActual != null && starValue <= votoUsuarioActual) || 
+                                     (votoUsuarioActual == null && starValue <= promedioEstrellas.round());
+                    return InkWell(
+                      onTap: () => _calificarSolucion(idSolucion, starValue),
+                      child: Icon(
+                        isFilled ? Icons.star : Icons.star_border,
+                        color: Colors.amber,
+                        size: 24,
+                      ),
+                    );
+                  }),
+                )
+              ],
+            )
+          ],
+        ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Detalle del Ejercicio'),
-        backgroundColor: const Color(0xFF007BFF),
-        foregroundColor: Colors.white,
-      ),
-      body: _cargando
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(child: Text('Error: $_error'))
-          : _publicacion == null
-          ? const Center(child: Text('No se encontró la publicación'))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _publicacion!['titulo'] ?? 'Sin título',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  _buildInfoMateria(),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Descripción:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(_publicacion!['descripcion'] ?? 'Sin descripción'),
-                  const SizedBox(height: 20),
-                  if (_publicacion!['foto_url'] != null) ...[
-                    const Text(
-                      'Archivo adjunto del ejercicio:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildArchivo(_publicacion!['foto_url']),
-                    const SizedBox(height: 20),
-                  ],
-                  _buildRatingSection(),
-                  const Divider(height: 30),
-                  const Text(
-                    'Tu respuesta:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: _mostrarMensajeEnDesarrollo,
-                    child: Container(
-                      height: 100,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.upload_file,
-                            size: 36,
-                            color: Color(0xFF007BFF),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Subir archivo de respuesta (JPG, PNG, PDF)',
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                          Text(
-                            'Funcionalidad en desarrollo',
-                            style: TextStyle(
-                              color: Colors.orange,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Información adicional',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '📌 Tipo: ${_publicacion!['tipo'] ?? 'No especificado'}',
-                          ),
-                          Text('⭐ Puntos: ${_publicacion!['puntuacion'] ?? 0}'),
-                          Text(
-                            '📅 Publicado: ${_formatearFecha(_publicacion!['tiempo'])}',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+  Widget _buildFormularioSolucion() {
+    final user = _supabase.auth.currentUser;
+    final esMiPropioEjercicio = _publicacion != null && user != null && _publicacion!['autor_id'] == user.id;
+
+    if (esMiPropioEjercicio) return const SizedBox.shrink();
+
+    return Card(
+      margin: const EdgeInsets.only(top: 16),
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Montar tu solución', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 15),
+            
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: _enviandoSolucion ? null : _seleccionarArchivoSolucion,
+                icon: const Icon(Icons.add_photo_alternate, size: 22),
+                label: const Text('SELECCIONAR FOTO / PDF DE TU SOLUCIÓN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               ),
             ),
-    );
-  }
+            const SizedBox(height: 12),
+            
+            if (_nombreArchivoSolucion != null) ...[
+              Text('Adjunto: $_nombreArchivoSolucion', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(height: 12),
+            ],
 
-  Widget _buildInfoMateria() {
-    final materiasData = _publicacion!['materias'];
-    if (materiasData == null) {
-      return const Text(
-        'Materia no especificada',
-        style: TextStyle(fontSize: 14, color: Colors.grey),
-      );
-    }
-    final facultadesData = materiasData['facultades'];
-    final materiaNombre =
-        materiasData['nombre_materias'] ?? 'Materia desconocida';
-    final facultadNombre =
-        (facultadesData != null && facultadesData['nombre_facultad'] != null)
-        ? facultadesData['nombre_facultad']
-        : 'Facultad desconocida';
-    return Row(
-      children: [
-        Icon(Icons.school, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            '$facultadNombre • $materiaNombre',
-            style: const TextStyle(fontSize: 14, color: Colors.grey),
-          ),
+            TextField(
+              controller: _solucionController,
+              maxLines: 3,
+              enabled: !_enviandoSolucion,
+              decoration: InputDecoration(
+                hintText: 'Explica tu resolución...',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _enviandoSolucion ? null : _subirYEnviarSolucion,
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF007BFF)),
+                child: _enviandoSolucion 
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('ENVIAR SOLUCIÓN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildArchivo(String url) {
+  Widget _buildArchivoGrande(String url) {
     final extension = url.split('.').last.toLowerCase();
     if (extension == 'pdf') {
-      return ElevatedButton.icon(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Abrir PDF (próximamente)')),
-          );
-        },
-        icon: const Icon(Icons.picture_as_pdf),
-        label: const Text('Ver PDF'),
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.red[100]),
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.picture_as_pdf, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Ver Archivo PDF', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ],
+        ),
       );
     } else {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.network(url, height: 200, fit: BoxFit.cover),
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(url, height: 200, width: double.infinity, fit: BoxFit.cover),
       );
-    }
-  }
-
-  String _formatearFecha(String? fechaISO) {
-    if (fechaISO == null) return 'desconocida';
-    try {
-      final fecha = DateTime.parse(fechaISO);
-      return '${fecha.day}/${fecha.month}/${fecha.year} ${fecha.hour}:${fecha.minute}';
-    } catch (e) {
-      return 'fecha inválida';
     }
   }
 }

@@ -1,5 +1,6 @@
 import 'package:braintask/presentation/pages/pantalla_carga.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
@@ -10,7 +11,7 @@ void main() async {
     anonKey: 'sb_publishable_take9BmJ8fcWjshpIoMjZQ_MY0JMkLZ',
   );
 
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {

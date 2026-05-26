@@ -5,7 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 
 class PublicarPage extends StatefulWidget {
-  const PublicarPage({super.key});
+  final VoidCallback? onSubmitSuccess;
+  const PublicarPage({super.key, this.onSubmitSuccess});
 
   @override
   State<PublicarPage> createState() => _PublicarPageState();
@@ -159,8 +160,14 @@ class _PublicarPageState extends State<PublicarPage> {
         'autor_id': _supabase.auth.currentUser?.id,
       });
 
-      Navigator.pop(context);
-      Navigator.pop(context);
+      Navigator.pop(context); // Cierra loading
+
+      if (widget.onSubmitSuccess != null) {
+        widget.onSubmitSuccess!();
+      } else if (Navigator.canPop(context)) {
+        // En caso de que se haya pusheado desde detalle_publicacion u otro
+        Navigator.pop(context);
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -178,6 +185,7 @@ class _PublicarPageState extends State<PublicarPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text(
           "Nueva Publicación",
           style: TextStyle(color: Colors.white),

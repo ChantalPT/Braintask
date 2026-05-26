@@ -8,6 +8,8 @@ import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
 import 'filtro.dart';
 import 'help_support_page.dart';
+import 'foro_page.dart';
+import 'pantalla_carga.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -291,6 +293,10 @@ class _HomePageState extends State<HomePage> {
     if (descripcionPreview.isEmpty) {
       descripcionPreview = 'Sin descripción';
     }
+
+    // EVALUACIÓN DEL ESTADO DINÁMICO PARA TU HU-06
+    final bool estaResuelto = pub.estado.toLowerCase() == 'resuelto';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -363,6 +369,22 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ],
                         ),
+                        // Pequeño indicador visual del estado (Aporte para la Heurística #1: Visibilidad)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: estaResuelto ? Colors.green.shade50 : Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            estaResuelto ? 'Resuelto' : 'Pendiente',
+                            style: TextStyle(
+                              color: estaResuelto ? Colors.green.shade700 : Colors.orange.shade700,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -375,43 +397,76 @@ class _HomePageState extends State<HomePage> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(
-                        height: 28,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DetallePublicacionPage(
-                                  publicacionId: pub.id,
+                      if (!estaResuelto) ...[
+                        
+                        SizedBox(
+                          height: 28,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => DetallePublicacionPage(
+                                    publicacionId: pub.id,
+                                  ),
                                 ),
-                              ),
-                            );
-                            _cargarPublicaciones();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF007BFF),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            textStyle: const TextStyle(fontSize: 11),
+                              );
+                              _cargarPublicaciones();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF007BFF),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                            child: const Text('Resolver'),
                           ),
-                          child: const Text('Resolver'),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      SizedBox(
-                        height: 28,
-                        child: OutlinedButton(
-                          onPressed: () {}, // Foro action
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF007BFF),
-                            side: const BorderSide(color: Color(0xFF007BFF)),
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            textStyle: const TextStyle(fontSize: 11),
+                      ] else ...[
+                      
+                        SizedBox(
+                          height: 28,
+                          child: OutlinedButton(
+                            onPressed: () {
+                             
+                              setState(() {
+                                _currentIndex = 1;
+                              });
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF007BFF),
+                              side: const BorderSide(color: Color(0xFF007BFF)),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              textStyle: const TextStyle(fontSize: 11),
+                            ),
+                            child: const Text('Ir al foro'),
                           ),
-                          child: const Text('Foro'),
                         ),
-                      ),
+                        const SizedBox(width: 4),
+                        SizedBox(
+                          height: 28,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => DetallePublicacionPage(
+                                    publicacionId: pub.id,
+                                  ),
+                                ),
+                              );
+                              _cargarPublicaciones();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green.shade600,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              textStyle: const TextStyle(fontSize: 11),
+                            ),
+                            child: const Text('Resolver'),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -424,32 +479,13 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
-  void _onBottomNavTap(int index) async {
-    if (index == 2) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const PublicarPage()),
-      );
-      _cargarPublicaciones();
-      return;
-    }
-
-    if (index == 4) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const HelpSupportPage()),
-      );
-      return;
-    }
-
+  void _onBottomNavTap(int index) {
     setState(() {
       _currentIndex = index;
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildHomeContent(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -459,6 +495,7 @@ class _HomePageState extends State<HomePage> {
           'Braintask',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
+        automaticallyImplyLeading: false,
         actions: [
           _buildReputationBadge(),
           //=================cambiar proximamente a perfil====================
@@ -472,6 +509,19 @@ class _HomePageState extends State<HomePage> {
               );
             },
             tooltip: 'Historial',
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.black),
+            onPressed: () async {
+              await Supabase.instance.client.auth.signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const PantallaCarga()),
+                  (route) => false,
+                );
+              }
+            },
+            tooltip: 'Cerrar sesión',
           ),
           //==================================================================
         ],
@@ -520,6 +570,28 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      _buildHomeContent(context),
+      const ForoPage(),
+      PublicarPage(
+        onSubmitSuccess: () {
+          setState(() {
+            _currentIndex = 0;
+          });
+          _cargarPublicaciones();
+        },
+      ),
+      const Scaffold(body: Center(child: Text("Perfil en construcción"))),
+      const HelpSupportPage(),
+    ];
+
+    return Scaffold(
+      body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: _onBottomNavTap,
