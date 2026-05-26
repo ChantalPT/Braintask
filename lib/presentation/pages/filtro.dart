@@ -88,7 +88,7 @@ class _FiltroSheetState extends State<FiltroSheet> {
               labelText: "Facultad / Carrera",
               border: OutlineInputBorder(),
             ),
-            value: _filtroFacultadSeleccionada,
+            initialValue: _filtroFacultadSeleccionada,
             items: _facultades
                 .map(
                   (f) => DropdownMenuItem(
@@ -114,7 +114,7 @@ class _FiltroSheetState extends State<FiltroSheet> {
               labelText: "Materia",
               border: OutlineInputBorder(),
             ),
-            value: _filtroMateriaSeleccionada,
+            initialValue: _filtroMateriaSeleccionada,
             items: _materias
                 .map(
                   (m) => DropdownMenuItem(
@@ -137,7 +137,7 @@ class _FiltroSheetState extends State<FiltroSheet> {
               labelText: "Tipo de Actividad",
               border: OutlineInputBorder(),
             ),
-            value: _filtroTipoSeleccionado,
+            initialValue: _filtroTipoSeleccionado,
             items: [
               'Parcial',
               'Tarea',

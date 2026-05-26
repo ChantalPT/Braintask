@@ -46,7 +46,7 @@ class _RegisterPageState extends State<RegisterPage> {
         _carreras = List<Map<String, dynamic>>.from(data);
       });
     } catch (e) {
-      print('Error cargando carreras: $e');
+      debugPrint('Error cargando carreras: $e');
     }
   }
 
@@ -229,11 +229,15 @@ class _RegisterPageState extends State<RegisterPage> {
                     icon: Icons.badge,
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty)
+                    if (value == null || value.trim().isEmpty) {
                       return 'Ingresa tu cédula';
-                    if (!RegExp(r'^[0-9]+$').hasMatch(value.trim()))
+                    }
+                    if (!RegExp(r'^[0-9]+$').hasMatch(value.trim())) {
                       return 'Solo números';
-                    if (value.trim().length < 7) return 'Mínimo 7 dígitos';
+                    }
+                    if (value.trim().length < 7) {
+                      return 'Mínimo 7 dígitos';
+                    }
                     return null;
                   },
                 ),
@@ -249,17 +253,21 @@ class _RegisterPageState extends State<RegisterPage> {
                     icon: Icons.credit_card,
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty)
+                    if (value == null || value.trim().isEmpty) {
                       return 'Ingresa tu carnet';
-                    if (!RegExp(r'^[0-9]+$').hasMatch(value.trim()))
+                    }
+                    if (!RegExp(r'^[0-9]+$').hasMatch(value.trim())) {
                       return 'Solo números';
-                    if (value.trim().length < 10) return 'Mínimo 10 dígitos';
+                    }
+                    if (value.trim().length < 10) {
+                      return 'Mínimo 10 dígitos';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int>(
-                  value: _carreraIdSeleccionado,
+                  initialValue: _carreraIdSeleccionado,
                   decoration: _inputDecoration(
                     label: 'Carrera',
                     icon: Icons.school,
@@ -286,9 +294,12 @@ class _RegisterPageState extends State<RegisterPage> {
                     icon: Icons.email_outlined,
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty)
+                    if (value == null || value.trim().isEmpty) {
                       return 'Ingresa tu correo';
-                    if (!value.contains('@')) return 'Correo inválido';
+                    }
+                    if (!value.contains('@')) {
+                      return 'Correo inválido';
+                    }
                     return null;
                   },
                 ),
@@ -312,9 +323,12 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Ingresa una contraseña';
-                    if (value.length < 6) return 'Mínimo 6 caracteres';
+                    }
+                    if (value.length < 6) {
+                      return 'Mínimo 6 caracteres';
+                    }
                     return null;
                   },
                 ),
@@ -340,8 +354,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                   validator: (value) {
-                    if (value != _passwordController.text)
+                    if (value != _passwordController.text) {
                       return 'Las contraseñas no coinciden';
+                    }
                     return null;
                   },
                 ),

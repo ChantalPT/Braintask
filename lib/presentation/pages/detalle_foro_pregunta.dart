@@ -130,7 +130,9 @@ class _DetalleForoPreguntaPageState
                 onPressed: () async {
                   try {
                     await ref.read(foroPreguntasProvider.notifier).votar(preguntaActual.id, true);
-                  } catch (e) {}
+                  } catch (e, stack) {
+                    debugPrint('Error al votar pregunta: $e\n$stack');
+                  }
                 },
               ),
               Text(
@@ -145,7 +147,9 @@ class _DetalleForoPreguntaPageState
                 onPressed: () async {
                   try {
                     await ref.read(foroPreguntasProvider.notifier).votar(preguntaActual.id, false);
-                  } catch (e) {}
+                  } catch (e, stack) {
+                    debugPrint('Error al votar pregunta: $e\n$stack');
+                  }
                 },
               ),
             ],
@@ -228,8 +232,18 @@ class _DetalleForoPreguntaPageState
                                    (respuesta.userVote == 0 && starValue <= respuesta.promedioEstrellas.round());
                   
                   return InkWell(
-                    onTap: () {
-                      ref.read(foroRespuestasProvider(widget.pregunta.id).notifier).calificar(respuesta.id, starValue);
+                    onTap: () async {
+                      try {
+                        await ref
+                            .read(foroRespuestasProvider(widget.pregunta.id).notifier)
+                            .calificar(respuesta.id, starValue);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error al calificar: $e')),
+                          );
+                        }
+                      }
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 2.0),

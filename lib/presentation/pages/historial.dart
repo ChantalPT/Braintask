@@ -60,7 +60,7 @@ class _HistorialState extends State<Historial> {
         _cargando = false;
       });
     } catch (e) {
-      print('Error cargando historial: $e');
+      debugPrint('Error cargando historial: $e');
       setState(() => _cargando = false);
     }
   }

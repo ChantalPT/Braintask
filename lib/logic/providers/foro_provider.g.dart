@@ -74,7 +74,7 @@ final class ForoPreguntasProvider
   ForoPreguntas create() => ForoPreguntas();
 }
 
-String _$foroPreguntasHash() => r'2b6f1fe90495cd0ebb9b2ab028dda2ed4bcaf7bc';
+String _$foroPreguntasHash() => r'b6072cf756456168ae4e5e84296c2fb0f0bcc818';
 
 abstract class _$ForoPreguntas extends $AsyncNotifier<List<ForoPregunta>> {
   FutureOr<List<ForoPregunta>> build();

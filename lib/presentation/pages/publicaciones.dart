@@ -160,6 +160,7 @@ class _PublicarPageState extends State<PublicarPage> {
         'autor_id': _supabase.auth.currentUser?.id,
       });
 
+      if (!mounted) return;
       Navigator.pop(context); // Cierra loading
 
       if (widget.onSubmitSuccess != null) {
@@ -169,6 +170,7 @@ class _PublicarPageState extends State<PublicarPage> {
         Navigator.pop(context);
       }
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("¡Publicado con éxito!"),
@@ -176,8 +178,11 @@ class _PublicarPageState extends State<PublicarPage> {
         ),
       );
     } catch (e) {
-      Navigator.pop(context);
-      _mostrarError("Error al subir: $e");
+      if (mounted) {
+        Navigator.pop(context);
+        _mostrarError("Error al subir: $e");
+      }
+
     }
   }
 
@@ -210,7 +215,7 @@ class _PublicarPageState extends State<PublicarPage> {
                 labelText: "Facultad",
                 border: OutlineInputBorder(),
               ),
-              value: _facultadSeleccionada,
+              initialValue: _facultadSeleccionada,
               items: _facultades
                   .map(
                     (f) => DropdownMenuItem(
@@ -235,7 +240,7 @@ class _PublicarPageState extends State<PublicarPage> {
                       labelText: "Materia",
                       border: OutlineInputBorder(),
                     ),
-                    value: _materiaSeleccionada,
+                    initialValue: _materiaSeleccionada,
                     items: _materias
                         .map(
                           (m) => DropdownMenuItem(
@@ -262,7 +267,7 @@ class _PublicarPageState extends State<PublicarPage> {
                       labelText: "Actividad",
                       border: OutlineInputBorder(),
                     ),
-                    value: _tipoActividad,
+                    initialValue: _tipoActividad,
                     items: ['Parcial', 'Tarea', 'Quiz', 'Proyecto']
                         .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                         .toList(),

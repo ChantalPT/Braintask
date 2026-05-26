@@ -10,6 +10,7 @@ import 'filtro.dart';
 import 'help_support_page.dart';
 import 'foro_page.dart';
 import 'pantalla_carga.dart';
+import 'perfil_page.dart'; // <--- CAMBIO 1: Importamos tu nueva pantalla
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -115,7 +116,7 @@ class _HomePageState extends State<HomePage> {
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: const Color.fromRGBO(0, 0, 0, 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -138,7 +139,7 @@ class _HomePageState extends State<HomePage> {
               borderRadius: BorderRadius.circular(15),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: const Color.fromRGBO(0, 0, 0, 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -293,10 +294,6 @@ class _HomePageState extends State<HomePage> {
     if (descripcionPreview.isEmpty) {
       descripcionPreview = 'Sin descripción';
     }
-
-    // EVALUACIÓN DEL ESTADO DINÁMICO PARA TU HU-06
-    final bool estaResuelto = pub.estado.toLowerCase() == 'resuelto';
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -369,22 +366,6 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ],
                         ),
-                        // Pequeño indicador visual del estado (Aporte para la Heurística #1: Visibilidad)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: estaResuelto ? Colors.green.shade50 : Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            estaResuelto ? 'Resuelto' : 'Pendiente',
-                            style: TextStyle(
-                              color: estaResuelto ? Colors.green.shade700 : Colors.orange.shade700,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ],
@@ -397,76 +378,43 @@ class _HomePageState extends State<HomePage> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (!estaResuelto) ...[
-                        
-                        SizedBox(
-                          height: 28,
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => DetallePublicacionPage(
-                                    publicacionId: pub.id,
-                                  ),
+                      SizedBox(
+                        height: 28,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DetallePublicacionPage(
+                                  publicacionId: pub.id,
                                 ),
-                              );
-                              _cargarPublicaciones();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF007BFF),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                            child: const Text('Resolver'),
+                              ),
+                            );
+                            _cargarPublicaciones();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF007BFF),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            textStyle: const TextStyle(fontSize: 11),
                           ),
+                          child: const Text('Resolver'),
                         ),
-                      ] else ...[
-                      
-                        SizedBox(
-                          height: 28,
-                          child: OutlinedButton(
-                            onPressed: () {
-                             
-                              setState(() {
-                                _currentIndex = 1;
-                              });
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF007BFF),
-                              side: const BorderSide(color: Color(0xFF007BFF)),
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              textStyle: const TextStyle(fontSize: 11),
-                            ),
-                            child: const Text('Ir al foro'),
+                      ),
+                      const SizedBox(width: 4),
+                      SizedBox(
+                        height: 28,
+                        child: OutlinedButton(
+                          onPressed: () {}, // Foro action
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF007BFF),
+                            side: const BorderSide(color: Color(0xFF007BFF)),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            textStyle: const TextStyle(fontSize: 11),
                           ),
+                          child: const Text('Foro'),
                         ),
-                        const SizedBox(width: 4),
-                        SizedBox(
-                          height: 28,
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => DetallePublicacionPage(
-                                    publicacionId: pub.id,
-                                  ),
-                                ),
-                              );
-                              _cargarPublicaciones();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.shade600,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              textStyle: const TextStyle(fontSize: 11),
-                            ),
-                            child: const Text('Resolver'),
-                          ),
-                        ),
-                      ],
+                      ),
                     ],
                   ),
                 ],
@@ -479,6 +427,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
   void _onBottomNavTap(int index) {
     setState(() {
       _currentIndex = index;
@@ -586,7 +535,7 @@ class _HomePageState extends State<HomePage> {
           _cargarPublicaciones();
         },
       ),
-      const Scaffold(body: Center(child: Text("Perfil en construcción"))),
+      const PerfilPage(), // <--- CAMBIO 2: Cambiamos el Text en construcción por PerfilPage
       const HelpSupportPage(),
     ];
 
