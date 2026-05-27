@@ -82,7 +82,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   }
 
   Future<void> _recargarSoluciones() async {
-    debugPrint("🔄 Recargando soluciones para publicación ${widget.publicacionId}...");
+    debugPrint(
+      "🔄 Recargando soluciones para publicación ${widget.publicacionId}...",
+    );
     setState(() => _cargandoSoluciones = true);
     try {
       final solData = await _supabase
@@ -120,7 +122,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
 
     if (_solucionController.text.trim().isEmpty && _archivoSolucion == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Escribe una explicación o adjunta un archivo.')),
+        const SnackBar(
+          content: Text('Escribe una explicación o adjunta un archivo.'),
+        ),
       );
       return;
     }
@@ -135,9 +139,14 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     try {
       if (_archivoSolucion != null) {
         final extension = _archivoSolucion!.path.split('.').last;
-        final pathArchivo = 'soluciones/${DateTime.now().millisecondsSinceEpoch}.$extension';
-        await _supabase.storage.from('soluciones').upload(pathArchivo, _archivoSolucion!);
-        urlArchivoSubido = _supabase.storage.from('soluciones').getPublicUrl(pathArchivo);
+        final pathArchivo =
+            'soluciones/${DateTime.now().millisecondsSinceEpoch}.$extension';
+        await _supabase.storage
+            .from('soluciones')
+            .upload(pathArchivo, _archivoSolucion!);
+        urlArchivoSubido = _supabase.storage
+            .from('soluciones')
+            .getPublicUrl(pathArchivo);
       }
 
       await _supabase.from('soluciones').insert({
@@ -162,7 +171,10 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         await _recargarSoluciones();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('¡Solución publicada!'), backgroundColor: Colors.green),
+            const SnackBar(
+              content: Text('¡Solución publicada!'),
+              backgroundColor: Colors.green,
+            ),
           );
         }
       });
@@ -170,7 +182,10 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
       debugPrint("❌ Error al enviar: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al enviar: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error al enviar: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -184,12 +199,16 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     final descripcion = _publicacion!['descripcion'] ?? 'Sin descripción';
     final autorNombre = _publicacion!['autor_nombre'] ?? 'Usuario';
 
+    final puntosBase = (_publicacion!['puntuacion'] as int?) ?? 0;
+    final votosForo = (_publicacion!['votos_foro'] as int?) ?? 0;
+
     final preguntaForo = ForoPregunta(
       id: widget.publicacionId,
       titulo: titulo,
       descripcion: descripcion,
       autorNombre: autorNombre,
-      votos: 0,
+      votos: votosForo,
+      puntosBase: puntosBase,
       respuestasCount: 0,
       tiempo: DateTime.now(),
     );
@@ -226,7 +245,14 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
-        title: const Text('Detalle del Ejercicio', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text(
+          'Detalle del Ejercicio',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.forum, color: Colors.blue),
@@ -239,7 +265,11 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               await _recargarSoluciones();
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Recargado: ${_soluciones.length} soluciones')),
+                  SnackBar(
+                    content: Text(
+                      'Recargado: ${_soluciones.length} soluciones',
+                    ),
+                  ),
                 );
               }
             },
@@ -257,29 +287,53 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
             children: [
               Card(
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(titulo, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text(
+                        titulo,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          const Icon(Icons.monetization_on, color: Colors.orange, size: 18),
+                          const Icon(
+                            Icons.monetization_on,
+                            color: Colors.orange,
+                            size: 18,
+                          ),
                           const SizedBox(width: 5),
-                          Text('$puntosBase pts base', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                          Text(
+                            '$puntosBase pts base',
+                            style: const TextStyle(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                       const Divider(height: 24),
-                      const Text('Enunciado:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const Text(
+                        'Enunciado:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
+                      ),
                       const SizedBox(height: 6),
                       Text(descripcion, style: const TextStyle(fontSize: 15)),
                       if (archivoPubUrl != null) ...[
                         const SizedBox(height: 12),
                         _buildArchivoGrande(archivoPubUrl),
-                      ]
+                      ],
                     ],
                   ),
                 ),
@@ -289,9 +343,19 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Soluciones Propuestas (${_soluciones.length})', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Soluciones Propuestas (${_soluciones.length})',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   if (_cargandoSoluciones)
-                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                 ],
               ),
               const Divider(),
@@ -300,7 +364,12 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               else if (_soluciones.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(20),
-                  child: Center(child: Text('Sé el primero en resolver este ejercicio.', style: TextStyle(color: Colors.grey))),
+                  child: Center(
+                    child: Text(
+                      'Sé el primero en resolver este ejercicio.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
                 )
               else
                 ListView.builder(
@@ -324,19 +393,34 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Solución', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                                const Text(
+                                  'Solución',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue,
+                                  ),
+                                ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: (sol['aceptada'] == true) ? Colors.green.shade100 : Colors.grey.shade200,
+                                    color: (sol['aceptada'] == true)
+                                        ? Colors.green.shade100
+                                        : Colors.grey.shade200,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    sol['aceptada'] == true ? 'Aceptada' : 'Pendiente',
+                                    sol['aceptada'] == true
+                                        ? 'Aceptada'
+                                        : 'Pendiente',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 12,
-                                      color: sol['aceptada'] == true ? Colors.green.shade800 : Colors.grey.shade700,
+                                      color: sol['aceptada'] == true
+                                          ? Colors.green.shade800
+                                          : Colors.grey.shade700,
                                     ),
                                   ),
                                 ),
@@ -344,7 +428,10 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                             ),
                             const SizedBox(height: 10),
                             if ((sol['comentario_solucion'] ?? '').isNotEmpty)
-                              Text(sol['comentario_solucion'], style: const TextStyle(fontSize: 14)),
+                              Text(
+                                sol['comentario_solucion'],
+                                style: const TextStyle(fontSize: 14),
+                              ),
                             if (sol['archivo_url'] != null) ...[
                               const SizedBox(height: 10),
                               _buildArchivoGrande(sol['archivo_url']),
@@ -352,9 +439,15 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                             const Divider(height: 24),
                             Row(
                               children: [
-                                const Icon(Icons.star, color: Colors.amber, size: 16),
+                                const Icon(
+                                  Icons.star,
+                                  color: Colors.amber,
+                                  size: 16,
+                                ),
                                 const SizedBox(width: 4),
-                                Text('Calificación: ${sol['calificacion'] ?? 'Sin calificar'}'),
+                                Text(
+                                  'Calificación: ${sol['calificacion'] ?? 'Sin calificar'}',
+                                ),
                               ],
                             ),
                           ],
@@ -372,7 +465,10 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
 
   Widget _buildFormularioSolucion() {
     final user = _supabase.auth.currentUser;
-    final esMiPropioEjercicio = _publicacion != null && user != null && _publicacion!['autor_id'] == user.id;
+    final esMiPropioEjercicio =
+        _publicacion != null &&
+        user != null &&
+        _publicacion!['autor_id'] == user.id;
     if (esMiPropioEjercicio) return const SizedBox.shrink();
 
     return Card(
@@ -384,20 +480,35 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Montar tu solución', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'Montar tu solución',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 15),
             SizedBox(
               width: double.infinity,
               height: 48,
               child: OutlinedButton.icon(
-                onPressed: _enviandoSolucion ? null : _seleccionarArchivoSolucion,
+                onPressed: _enviandoSolucion
+                    ? null
+                    : _seleccionarArchivoSolucion,
                 icon: const Icon(Icons.add_photo_alternate, size: 22),
-                label: const Text('SELECCIONAR FOTO / PDF DE TU SOLUCIÓN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                label: const Text(
+                  'SELECCIONAR FOTO / PDF DE TU SOLUCIÓN',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             if (_nombreArchivoSolucion != null) ...[
-              Text('Adjunto: $_nombreArchivoSolucion', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+              Text(
+                'Adjunto: $_nombreArchivoSolucion',
+                style: const TextStyle(
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
               const SizedBox(height: 12),
             ],
             TextField(
@@ -406,7 +517,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               enabled: !_enviandoSolucion,
               decoration: InputDecoration(
                 hintText: 'Explica tu resolución...',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -415,10 +528,18 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               height: 48,
               child: ElevatedButton(
                 onPressed: _enviandoSolucion ? null : _subirYEnviarSolucion,
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF007BFF)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF007BFF),
+                ),
                 child: _enviandoSolucion
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('ENVIAR SOLUCIÓN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    : const Text(
+                        'ENVIAR SOLUCIÓN',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -432,20 +553,31 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     if (extension == 'pdf') {
       return Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.picture_as_pdf, color: Colors.red),
             SizedBox(width: 8),
-            Text('Ver Archivo PDF', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            Text(
+              'Ver Archivo PDF',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       );
     } else {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Image.network(url, height: 200, width: double.infinity, fit: BoxFit.cover),
+        child: Image.network(
+          url,
+          height: 200,
+          width: double.infinity,
+          fit: BoxFit.cover,
+        ),
       );
     }
   }
