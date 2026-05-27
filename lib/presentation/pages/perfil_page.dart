@@ -15,12 +15,12 @@ class PerfilPage extends ConsumerStatefulWidget {
 
 class _PerfilPageState extends ConsumerState<PerfilPage> {
   final _formKey = GlobalKey<FormState>();
-  
+
   late TextEditingController _nombreController;
   late TextEditingController _apellidoController;
   late TextEditingController _cedulaController;
   late TextEditingController _carnetController;
-  
+
   int? _carreraIdSeleccionado;
   List<dynamic> _carreras = [];
   bool _guardando = false;
@@ -41,7 +41,9 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
     try {
       final data = await Supabase.instance.client
           .from('carreras')
-          .select('id, nombre') // Verifica si en BD es id/nombre o id_carrera/nombre_carrera
+          .select(
+            'id, nombre',
+          ) // Verifica si en BD es id/nombre o id_carrera/nombre_carrera
           .order('nombre');
       if (mounted) setState(() => _carreras = data);
     } catch (e) {
@@ -67,7 +69,9 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
     setState(() => _guardando = true);
 
     try {
-      await ref.read(usuarioProvider.notifier).modificarPerfil(
+      await ref
+          .read(usuarioProvider.notifier)
+          .modificarPerfil(
             nombre: _nombreController.text.trim(),
             apellido: _apellidoController.text.trim(),
             cedula: _cedulaController.text.trim(),
@@ -77,7 +81,10 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Perfil actualizado'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Perfil actualizado'),
+          backgroundColor: Colors.green,
+        ),
       );
     } catch (error) {
       if (!mounted) return;
@@ -116,81 +123,118 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Mi Perfil', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF007BFF),
+        foregroundColor: Colors.white,
+        title: const Text('Mi Perfil', style: TextStyle(color: Colors.white)),
         actions: [
-          IconButton(icon: const Icon(Icons.logout, color: Colors.red), onPressed: _cerrarSesion)
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _cerrarSesion,
+            tooltip: 'Cerrar sesión',
+          ),
         ],
       ),
       body: usuarioAsync.when(
         data: (usuario) {
           _inicializarCampos(usuario);
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(22),
-            child: Form(
-              key: _formKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Información personal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _nombreController,
-                    decoration: const InputDecoration(labelText: 'Nombre'),
-                    validator: (v) => v!.trim().isEmpty ? 'Requerido' : null,
-                  ),
-                  const SizedBox(height: 15),
-                  TextFormField(
-                    controller: _apellidoController,
-                    decoration: const InputDecoration(labelText: 'Apellido'),
-                    validator: (v) => v!.isEmpty ? 'Requerido' : null,
-                  ),
-                  const SizedBox(height: 15),
-                  TextFormField(
-                    controller: _cedulaController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: const InputDecoration(labelText: 'Cédula'),
-                    validator: (v) => v!.length < 7 ? 'Mínimo 7 dígitos' : null,
-                  ),
-                  const SizedBox(height: 15),
-                  TextFormField(
-                    controller: _carnetController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: const InputDecoration(labelText: 'Carnet'),
-                    validator: (v) => v!.trim().length < 10 ? 'Mínimo 10 dígitos' : null,
-                  ),
-                  const SizedBox(height: 25),
-                  const Text('Información académica', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<int>(
-                    initialValue: _carreraIdSeleccionado,
-                    decoration: const InputDecoration(labelText: 'Carrera Académica'),
-                    items: _carreras.map<DropdownMenuItem<int>>((c) {
-                      return DropdownMenuItem<int>(
-                        value: c['id_carrera'] ?? c['id'],
-                        child: Text(c['nombre_carrera'] ?? c['nombre'] ?? ''),
-                      );
-                    }).toList(),
-                    onChanged: (val) => setState(() => _carreraIdSeleccionado = val),
-                    validator: (v) => v == null ? 'Requerido' : null,
-                  ),
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _guardando ? null : _guardarCambios,
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF007BFF)),
-                      child: _guardando 
-                          ? const CircularProgressIndicator(color: Colors.white) 
-                          : const Text('GUARDAR CAMBIOS', style: TextStyle(color: Colors.white)),
+            padding: const EdgeInsets.all(20.0),
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                inputDecorationTheme: const InputDecorationTheme(
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              child: Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Información personal',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: _nombreController,
+                      decoration: const InputDecoration(labelText: 'Nombre'),
+                      validator: (v) => v!.trim().isEmpty ? 'Requerido' : null,
+                    ),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: _apellidoController,
+                      decoration: const InputDecoration(labelText: 'Apellido'),
+                      validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                    ),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: _cedulaController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: const InputDecoration(labelText: 'Cédula'),
+                      validator: (v) =>
+                          v!.length < 7 ? 'Mínimo 7 dígitos' : null,
+                    ),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: _carnetController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: const InputDecoration(labelText: 'Carnet'),
+                      validator: (v) =>
+                          v!.trim().length < 10 ? 'Mínimo 10 dígitos' : null,
+                    ),
+                    const SizedBox(height: 30),
+                    const Text(
+                      'Información académica',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    DropdownButtonFormField<int>(
+                      isExpanded: true,
+                      initialValue: _carreraIdSeleccionado,
+                      decoration: const InputDecoration(
+                        labelText: 'Carrera Académica',
+                      ),
+                      items: _carreras.map<DropdownMenuItem<int>>((c) {
+                        return DropdownMenuItem<int>(
+                          value: c['id_carrera'] ?? c['id'],
+                          child: Text(c['nombre_carrera'] ?? c['nombre'] ?? ''),
+                        );
+                      }).toList(),
+                      onChanged: (val) =>
+                          setState(() => _carreraIdSeleccionado = val),
+                      validator: (v) => v == null ? 'Requerido' : null,
+                    ),
+                    const SizedBox(height: 30),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _guardando ? null : _guardarCambios,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF007BFF),
+                          foregroundColor: Colors.white,
+                        ),
+                        child: _guardando
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : const Text(
+                                'GUARDAR CAMBIOS',
+                                style: TextStyle(fontSize: 16),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );

@@ -15,12 +15,9 @@ class ForoPage extends ConsumerWidget {
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Foro',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
+        backgroundColor: const Color(0xFF007BFF),
+        foregroundColor: Colors.white,
+        title: const Text('Foro', style: TextStyle(color: Colors.white)),
       ),
       body: Column(
         children: [

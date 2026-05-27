@@ -438,19 +438,16 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Braintask',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
+        backgroundColor: const Color(0xFF007BFF),
+        foregroundColor: Colors.white,
+        title: const Text('Braintask', style: TextStyle(color: Colors.white)),
         automaticallyImplyLeading: false,
         actions: [
           _buildReputationBadge(),
           //=================cambiar proximamente a perfil====================
           const SizedBox(width: 15),
           IconButton(
-            icon: const Icon(Icons.history, color: Colors.black),
+            icon: const Icon(Icons.history),
             onPressed: () {
               Navigator.push(
                 context,
@@ -460,7 +457,7 @@ class _HomePageState extends State<HomePage> {
             tooltip: 'Historial',
           ),
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black),
+            icon: const Icon(Icons.logout),
             onPressed: () async {
               await Supabase.instance.client.auth.signOut();
               if (context.mounted) {
