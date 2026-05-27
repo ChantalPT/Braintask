@@ -1,9 +1,11 @@
 import 'package:braintask/presentation/pages/historial.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/publicacion.dart';
 import '../../data/repositories/publicaciones_repository.dart';
+import '../../logic/providers/usuario_provider.dart';
 import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
 import 'filtro.dart';
@@ -12,14 +14,14 @@ import 'foro_page.dart';
 import 'pantalla_carga.dart';
 import 'perfil_page.dart'; // <--- CAMBIO 1: Importamos tu nueva pantalla
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> {
   int _currentIndex = 0;
   late final PublicacionesRepository _repository;
   List<Publicacion> _publicaciones = [];
@@ -286,6 +288,36 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildGreeting() {
+    final usuarioAsync = ref.watch(usuarioProvider);
+    final nombrePerfil = usuarioAsync.maybeWhen(
+      data: (usuario) => usuario.nombre.trim(),
+      orElse: () => '',
+    );
+    final nombre = _nombreParaSaludo(nombrePerfil);
+    final saludo = nombre.isEmpty ? '¡Hola!' : '¡Hola, $nombre!';
+
+    return Text(
+      '$saludo 👋',
+      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+    );
+  }
+
+  String _nombreParaSaludo(String nombrePerfil) {
+    final email = Supabase.instance.client.auth.currentUser?.email ?? '';
+    final fuente = nombrePerfil.isNotEmpty ? nombrePerfil : email;
+    final partes = fuente
+        .trim()
+        .split(RegExp(r'[\s._\-@]+'))
+        .where((parte) => parte.isNotEmpty)
+        .toList();
+
+    if (partes.isEmpty) return '';
+    final primeraParte = partes.first;
+    return primeraParte[0].toUpperCase() +
+        primeraParte.substring(1).toLowerCase();
+  }
+
   Widget _buildProblemCard(Publicacion pub) {
     String descripcionPreview = (pub.descripcion ?? '').trim();
     if (descripcionPreview.length > 120) {
@@ -478,10 +510,7 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '¡Hola, Ale! 👋',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+            _buildGreeting(),
             const SizedBox(height: 15),
             _buildSearchBar(),
             const SizedBox(height: 25),
