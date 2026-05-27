@@ -4,6 +4,7 @@ class ForoPregunta {
   final String descripcion;
   final String autorNombre;
   final int votos;
+  final int puntosBase;
   final int respuestasCount;
   final DateTime tiempo;
   final int userVote; // 1 = upvote, -1 = downvote, 0 = sin voto
@@ -14,6 +15,7 @@ class ForoPregunta {
     required this.descripcion,
     required this.autorNombre,
     required this.votos,
+    required this.puntosBase,
     required this.respuestasCount,
     required this.tiempo,
     this.userVote = 0,
@@ -40,9 +42,8 @@ class ForoPregunta {
       titulo: json['titulo'] ?? 'Sin título',
       descripcion: json['descripcion'] ?? '',
       autorNombre: nombre,
-      votos:
-          json['votos_foro'] ??
-          0, // Usar la nueva columna en lugar de 'puntuacion'
+      votos: ((json['votos_foro'] as int?) ?? 0).clamp(0, 999999),
+      puntosBase: ((json['puntuacion'] as int?) ?? 0).clamp(0, 999999),
       respuestasCount: respCount, // Obtener recuento real de base de datos
       tiempo: json['tiempo'] != null
           ? DateTime.parse(json['tiempo'])
@@ -50,13 +51,19 @@ class ForoPregunta {
     );
   }
 
-  ForoPregunta copyWith({int? votos, int? respuestasCount, int? userVote}) {
+  ForoPregunta copyWith({
+    int? votos,
+    int? puntosBase,
+    int? respuestasCount,
+    int? userVote,
+  }) {
     return ForoPregunta(
       id: id,
       titulo: titulo,
       descripcion: descripcion,
       autorNombre: autorNombre,
       votos: votos ?? this.votos,
+      puntosBase: puntosBase ?? this.puntosBase,
       respuestasCount: respuestasCount ?? this.respuestasCount,
       tiempo: tiempo,
       userVote: userVote ?? this.userVote,

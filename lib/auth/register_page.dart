@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_page.dart';
+import 'unimet_email_validator.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -285,12 +286,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     label: 'Correo electrónico',
                     icon: Icons.email_outlined,
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty)
-                      return 'Ingresa tu correo';
-                    if (!value.contains('@')) return 'Correo inválido';
-                    return null;
-                  },
+                  validator: validarCorreoUnimet,
                 ),
                 const SizedBox(height: 16),
 

@@ -17,7 +17,9 @@ dependencies:
   image_picker: ^1.0.7 
   file_picker: ^8.0.0
   flutter_riverpod: any
+  riverpod_annotation: any
   riverpod_generator: any
+  shared_preferences: any
   build_runner: any
 
 dev_dependencies:

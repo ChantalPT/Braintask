@@ -2,6 +2,7 @@ import 'package:braintask/presentation/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'register_page.dart';
+import 'unimet_email_validator.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -140,17 +141,7 @@ class _LoginPageState extends State<LoginPage> {
                     label: 'Correo electrónico',
                     icon: Icons.email_outlined,
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Ingresa tu correo';
-                    }
-
-                    if (!value.contains('@')) {
-                      return 'Ingresa un correo válido';
-                    }
-
-                    return null;
-                  },
+                  validator: validarCorreoUnimet,
                 ),
 
                 const SizedBox(height: 18),

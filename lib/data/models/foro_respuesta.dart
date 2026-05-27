@@ -3,10 +3,10 @@ class ForoRespuesta {
   final int idPregunta;
   final String contenido;
   final String autorNombre;
-  final double promedioEstrellas; // Promedio de 1.0 a 5.0
-  final int totalVotos; // Cuántas personas han votado
+  final double promedioEstrellas;
+  final int totalVotos;
   final DateTime tiempo;
-  final int userVote; // Del 1 al 5 (estrellas dadas por este usuario), 0 = sin voto
+  final int userVote;
 
   ForoRespuesta({
     required this.id,
@@ -20,36 +20,24 @@ class ForoRespuesta {
   });
 
   factory ForoRespuesta.fromJson(Map<String, dynamic> json) {
-    // Extraer el nombre del autor
-    String nombre = 'Anónimo';
+    String nombre = 'Anonimo';
     if (json['usuarios'] != null && json['usuarios'] is Map) {
-      nombre = json['usuarios']['nombre'] ?? 'Anónimo';
+      nombre = json['usuarios']['nombre'] ?? 'Anonimo';
       if (json['usuarios']['apellido'] != null) {
         nombre += ' ${json['usuarios']['apellido']}';
       }
     }
 
-    // --- NUEVA LÓGICA DE ESTRELLAS ---
-    // Calculamos el promedio desde la base de datos
-    double promedio = 0.0;
-    int total = 0;
-
-    if (json['calificacion_respuestas'] != null && json['calificacion_respuestas'] is List) {
-      final calificaciones = json['calificacion_respuestas'] as List;
-      total = calificaciones.length;
-      if (total > 0) {
-        final suma = calificaciones.fold<int>(0, (sum, item) => sum + (item['estrellas'] as int));
-        promedio = suma / total;
-      }
-    }
+    final estrellas = (json['votos'] as num?)?.toInt() ?? 0;
+    final estrellasValidas = estrellas.clamp(0, 5);
 
     return ForoRespuesta(
       id: json['id_respuesta'] ?? 0,
       idPregunta: json['id_publicacion'] ?? 0,
       contenido: json['contenido'] ?? '',
       autorNombre: nombre,
-      promedioEstrellas: promedio,
-      totalVotos: total,
+      promedioEstrellas: estrellasValidas.toDouble(),
+      totalVotos: estrellasValidas > 0 ? 1 : 0,
       tiempo: json['tiempo'] != null
           ? DateTime.parse(json['tiempo'])
           : DateTime.now(),
