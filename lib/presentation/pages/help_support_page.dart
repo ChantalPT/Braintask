@@ -17,9 +17,13 @@ class HelpSupportPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text(
           'Ayuda y Soporte',
-          style: TextStyle(color: Colors.white, decoration: TextDecoration.none),
+          style: TextStyle(
+            color: Colors.white,
+            decoration: TextDecoration.none,
+          ),
         ),
         backgroundColor: const Color(0xFF007BFF),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -118,17 +122,26 @@ class HelpSupportPage extends StatelessWidget {
                 SizedBox(height: 12),
                 Text(
                   '📧 soporte@braintask.com',
-                  style: TextStyle(color: Colors.black, decoration: TextDecoration.none),
+                  style: TextStyle(
+                    color: Colors.black,
+                    decoration: TextDecoration.none,
+                  ),
                 ),
                 SizedBox(height: 8),
                 Text(
                   '📞 +58 412-0000000',
-                  style: TextStyle(color: Colors.black, decoration: TextDecoration.none),
+                  style: TextStyle(
+                    color: Colors.black,
+                    decoration: TextDecoration.none,
+                  ),
                 ),
                 SizedBox(height: 8),
                 Text(
                   '🕒 Lunes a Viernes - 8:00 AM a 5:00 PM',
-                  style: TextStyle(color: Colors.black, decoration: TextDecoration.none),
+                  style: TextStyle(
+                    color: Colors.black,
+                    decoration: TextDecoration.none,
+                  ),
                 ),
               ],
             ),
@@ -157,11 +170,12 @@ class _HelpCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
       elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ),
         leading: Icon(icon, color: const Color(0xFF007BFF), size: 28),
         title: Text(
           title,
@@ -189,11 +203,7 @@ class HelpDetailPage extends StatelessWidget {
   final String title;
   final List<String> items;
 
-  const HelpDetailPage({
-    super.key,
-    required this.title,
-    required this.items,
-  });
+  const HelpDetailPage({super.key, required this.title, required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -202,7 +212,10 @@ class HelpDetailPage extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           title,
-          style: const TextStyle(color: Colors.white, decoration: TextDecoration.none),
+          style: const TextStyle(
+            color: Colors.white,
+            decoration: TextDecoration.none,
+          ),
         ),
         backgroundColor: const Color(0xFF007BFF),
         iconTheme: const IconThemeData(color: Colors.white),
