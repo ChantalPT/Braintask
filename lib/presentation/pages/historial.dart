@@ -29,6 +29,14 @@ class _HistorialState extends State<Historial> {
     }
 
     try {
+      // Obtener la cédula del usuario actual
+      final userData = await _supabase
+          .from('usuarios')
+          .select('cedula')
+          .eq('auth_user_id', user.id)
+          .single();
+      final cedula = userData['cedula'] as String;
+
       final publicaciones = await _supabase
           .from('publicaciones')
           .select('''
@@ -42,15 +50,16 @@ class _HistorialState extends State<Historial> {
           .from('soluciones')
           .select('''
             id_publicacion,
-            aceptada,
+            archivo_url,
+            comentario_solucion,
+            fecha_subida,
             publicaciones!inner (
               *,
               materias!left (nombre_materias)
             )
           ''')
-          .eq('usuario_id', user.id)
-          .eq('aceptada', true)
-          .order('created_at', ascending: false);
+          .eq('cedula_usuario_solver', cedula)
+          .order('fecha_subida', ascending: false);
 
       setState(() {
         _misPublicaciones = List<Map<String, dynamic>>.from(publicaciones);
