@@ -1,9 +1,7 @@
-import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/models/foro_respuesta.dart';
 import 'foro_provider.dart';
-
 
 part 'foro_respuestas_provider.g.dart';
 
@@ -22,51 +20,52 @@ class ForoRespuestas extends _$ForoRespuestas {
     }).toList();
   }
 
-  Future<void> calificar(int idRespuesta, int estrellas) async {
-
-    if (estrellas < 1 || estrellas > 5) return;
-
+  Future<void> calificar(int id, int estrellas) async {
     final priorState = state.value;
     if (priorState == null) return;
 
-    final respIndex = priorState.indexWhere((r) => r.id == idRespuesta);
+    final respIndex = priorState.indexWhere((r) => r.id == id);
     if (respIndex == -1) return;
 
-    final resp = priorState[respIndex];
-    if (resp.userVote == estrellas) return;
-
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('respuesta_vote_$idRespuesta', estrellas);
+    final previousVote = prefs.getInt('respuesta_vote_$id') ?? 0;
+    await prefs.setInt('respuesta_vote_$id', estrellas);
 
     state = AsyncData(
       priorState.map((r) {
-        if (r.id == idRespuesta) {
-          return r.copyWith(userVote: estrellas);
+        if (r.id == id) {
+          return r.copyWith(
+            promedioEstrellas: estrellas.toDouble(),
+            totalVotos: 1,
+            userVote: estrellas,
+          );
         }
         return r;
       }).toList(),
     );
 
     try {
-      await ref.read(foroRepositoryProvider).calificarRespuesta(idRespuesta, estrellas);
-      ref.invalidateSelf();
+      final repo = ref.read(foroRepositoryProvider);
+      await repo.calificarRespuesta(id, estrellas);
     } catch (e) {
-      await prefs.setInt('respuesta_vote_$idRespuesta', resp.userVote);
+      if (previousVote == 0) {
+        await prefs.remove('respuesta_vote_$id');
+      } else {
+        await prefs.setInt('respuesta_vote_$id', previousVote);
+      }
       state = AsyncData(priorState);
       rethrow;
     }
   }
 
   Future<void> responder(int preguntaId, String contenido) async {
-    if (contenido.trim().isEmpty) return;
+    final contenidoLimpio = contenido.trim();
+    if (contenidoLimpio.isEmpty) return;
 
     final repo = ref.read(foroRepositoryProvider);
-    await repo.agregarRespuesta(preguntaId, contenido.trim());
+    await repo.agregarRespuesta(preguntaId, contenidoLimpio);
 
-    // Agregamos localmente al contador de la pregunta en la UI
-    ref.read(foroPreguntasProvider.notifier).incrementAnswers(preguntaId);
-
-    // Invalidamos para que recargue las respuestas
     ref.invalidateSelf();
+    ref.invalidate(foroPreguntasProvider);
   }
 }

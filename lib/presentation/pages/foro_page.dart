@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/models/foro_pregunta.dart';
 import '../../logic/providers/foro_provider.dart';
 import 'detalle_foro_pregunta.dart';
 
@@ -23,13 +24,13 @@ class ForoPage extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          _buildSearchBar(context, ref),
+          _buildSearchBar(ref),
           Expanded(
             child: preguntasAsync.when(
               data: (preguntas) {
                 if (preguntas.isEmpty) {
                   return const Center(
-                    child: Text('No hay preguntas con ese término.'),
+                    child: Text('No hay preguntas con ese termino.'),
                   );
                 }
                 return RefreshIndicator(
@@ -41,7 +42,7 @@ class ForoPage extends ConsumerWidget {
                     itemCount: preguntas.length,
                     itemBuilder: (context, index) {
                       final p = preguntas[index];
-                      return _buildPreguntaCard(context, ref, p);
+                      return _buildPreguntaCard(context, p);
                     },
                   ),
                 );
@@ -55,7 +56,7 @@ class ForoPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildSearchBar(BuildContext context, WidgetRef ref) {
+  Widget _buildSearchBar(WidgetRef ref) {
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.white,
@@ -87,7 +88,7 @@ class ForoPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildPreguntaCard(BuildContext context, WidgetRef ref, pregunta) {
+  Widget _buildPreguntaCard(BuildContext context, ForoPregunta pregunta) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -108,14 +109,12 @@ class ForoPage extends ConsumerWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Reddit-style Upvotes left column -> wait, making it horizontal below is fine too,
-            // but standard Reddit usually has upvotes on left side. Or like SO. Let's put it on left
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Publicado por ${pregunta.autorNombre} • ${pregunta.tiempo.day}/${pregunta.tiempo.month}/${pregunta.tiempo.year}',
+                    'Publicado por ${pregunta.autorNombre} - ${pregunta.tiempo.day}/${pregunta.tiempo.month}/${pregunta.tiempo.year}',
                     style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                   ),
                   const SizedBox(height: 4),
@@ -154,13 +153,25 @@ class ForoPage extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      Text(
-                        'Puntuación: ${pregunta.votos}',
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${pregunta.puntosBase} pts base',
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            '${pregunta.votos} votos',
+                            style: const TextStyle(
+                              color: Colors.black54,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

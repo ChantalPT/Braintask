@@ -6,13 +6,11 @@ import '../../data/repositories/foro_repository.dart';
 
 part 'foro_provider.g.dart';
 
-// Provide the repository
 @riverpod
 ForoRepository foroRepository(Ref ref) {
   return ForoRepository(Supabase.instance.client);
 }
 
-// Controller for the list of questions on the forum
 @riverpod
 class ForoPreguntas extends _$ForoPreguntas {
   String _searchQuery = '';
@@ -44,25 +42,24 @@ class ForoPreguntas extends _$ForoPreguntas {
     if (pubIndex == -1) return;
 
     final pub = priorState[pubIndex];
-
-    // Si ya le dio like a esto no hacer nada de nuevo (Para evitar SPAM)
     final targetVote = isUpvote ? 1 : -1;
-    if (pub.userVote == targetVote) return;
-
-    // Calculamos qué tanto debe cambiar el puntaje
-    int difference = targetVote;
-    if (pub.userVote != 0) {
-      // Si cambia de dislike a like suma doble, etc
-      difference = targetVote * 2;
-    }
+    final nextVote = pub.userVote == targetVote ? 0 : targetVote;
+    final difference = (nextVote - pub.userVote).clamp(-1, 1);
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('pregunta_vote_$id', targetVote);
+    if (nextVote == 0) {
+      await prefs.remove('pregunta_vote_$id');
+    } else {
+      await prefs.setInt('pregunta_vote_$id', nextVote);
+    }
 
     state = AsyncData(
       priorState.map((p) {
         if (p.id == id) {
-          return p.copyWith(votos: p.votos + difference, userVote: targetVote);
+          return p.copyWith(
+            votos: (p.votos + difference).clamp(0, 999999),
+            userVote: nextVote,
+          );
         }
         return p;
       }).toList(),
@@ -70,22 +67,21 @@ class ForoPreguntas extends _$ForoPreguntas {
 
     try {
       final repo = ref.read(foroRepositoryProvider);
-      if (pub.userVote != 0) {
-        await repo.votarPregunta(id, isUpvote);
-        await repo.votarPregunta(id, isUpvote);
-      } else {
-        await repo.votarPregunta(id, isUpvote);
+      if (difference != 0) {
+        await repo.ajustarVotoPregunta(id, difference);
       }
     } catch (e) {
-      // Rollback en caso de error
-      await prefs.setInt('pregunta_vote_$id', pub.userVote);
+      if (pub.userVote == 0) {
+        await prefs.remove('pregunta_vote_$id');
+      } else {
+        await prefs.setInt('pregunta_vote_$id', pub.userVote);
+      }
       state = AsyncData(priorState);
       rethrow;
     }
   }
 
   void incrementAnswers(int id) {
-    // Actualización del conteo al responder
     final priorState = state.value;
     if (priorState != null) {
       state = AsyncData(

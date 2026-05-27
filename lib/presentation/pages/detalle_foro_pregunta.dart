@@ -43,7 +43,10 @@ class _DetalleForoPreguntaPageState
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Ejercicio y Respuestas', style: TextStyle(color: Colors.black)),
+        title: const Text(
+          'Ejercicio y Respuestas',
+          style: TextStyle(color: Colors.black),
+        ),
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: Column(
@@ -62,7 +65,7 @@ class _DetalleForoPreguntaPageState
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // LISTA DE RESPUESTAS CON ESTRELLAS
                   respuestasAsync.when(
                     data: (respuestas) {
@@ -73,7 +76,15 @@ class _DetalleForoPreguntaPageState
                       }
                       return Column(
                         children: respuestas
-                            .map((r) => _buildRespuestaCard(context, ref, r, currentPregunta.votos))
+                            .map(
+                              (r) => _buildRespuestaCard(
+                                context,
+                                ref,
+                                r,
+                                currentPregunta.id,
+                                currentPregunta.puntosBase,
+                              ),
+                            )
                             .toList(),
                       );
                     },
@@ -85,7 +96,7 @@ class _DetalleForoPreguntaPageState
               ),
             ),
           ),
-          
+
           // CAJA PARA ESCRIBIR UNA NUEVA RESPUESTA
           _buildReplyBox(context, currentPregunta),
         ],
@@ -93,7 +104,10 @@ class _DetalleForoPreguntaPageState
     );
   }
 
-  Widget _buildPreguntaCompleta(BuildContext context, ForoPregunta preguntaActual) {
+  Widget _buildPreguntaCompleta(
+    BuildContext context,
+    ForoPregunta preguntaActual,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -125,30 +139,51 @@ class _DetalleForoPreguntaPageState
               IconButton(
                 icon: Icon(
                   Icons.thumb_up,
-                  color: preguntaActual.userVote == 1 ? Colors.blue : Colors.grey,
+                  color: preguntaActual.userVote == 1
+                      ? Colors.blue
+                      : Colors.grey,
                 ),
                 onPressed: () async {
                   try {
-                    await ref.read(foroPreguntasProvider.notifier).votar(preguntaActual.id, true);
-                  } catch (e, stack) {
-                    debugPrint('Error al votar pregunta: $e\n$stack');
+                    await ref
+                        .read(foroPreguntasProvider.notifier)
+                        .votar(preguntaActual.id, true);
+                  } catch (_) {
+                    // El provider revierte el voto optimista si Supabase falla.
                   }
                 },
               ),
               Text(
-                '${preguntaActual.votos} pts base',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.orange),
+                '${preguntaActual.votos} votos',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.orange,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '${preguntaActual.puntosBase} pts base',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.green,
+                ),
               ),
               IconButton(
                 icon: Icon(
                   Icons.thumb_down,
-                  color: preguntaActual.userVote == -1 ? Colors.red : Colors.grey,
+                  color: preguntaActual.userVote == -1
+                      ? Colors.red
+                      : Colors.grey,
                 ),
                 onPressed: () async {
                   try {
-                    await ref.read(foroPreguntasProvider.notifier).votar(preguntaActual.id, false);
-                  } catch (e, stack) {
-                    debugPrint('Error al votar pregunta: $e\n$stack');
+                    await ref
+                        .read(foroPreguntasProvider.notifier)
+                        .votar(preguntaActual.id, false);
+                  } catch (_) {
+                    // El provider revierte el voto optimista si Supabase falla.
                   }
                 },
               ),
@@ -160,11 +195,18 @@ class _DetalleForoPreguntaPageState
   }
 
   // TARJETA DE RESPUESTA MODIFICADA (SISTEMA DE ESTRELLAS)
-  Widget _buildRespuestaCard(BuildContext context, WidgetRef ref, ForoRespuesta respuesta, int puntosBase) {
-    // Calculamos los puntos ganados basados en el promedio de estrellas
+  Widget _buildRespuestaCard(
+    BuildContext context,
+    WidgetRef ref,
+    ForoRespuesta respuesta,
+    int preguntaId,
+    int puntosBase,
+  ) {
+    final puntosBaseValidos = puntosBase.clamp(0, 999999);
     int puntosReales = 0;
     if (respuesta.totalVotos > 0) {
-      puntosReales = (puntosBase * (respuesta.promedioEstrellas / 5)).round();
+      puntosReales = (puntosBaseValidos * (respuesta.promedioEstrellas / 5))
+          .round();
     }
 
     return Container(
@@ -184,63 +226,79 @@ class _DetalleForoPreguntaPageState
             children: [
               Text(
                 '${respuesta.autorNombre} • ${respuesta.tiempo.day}/${respuesta.tiempo.month}',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: respuesta.totalVotos == 0 ? Colors.grey.shade200 : Colors.green.shade100,
+                  color: respuesta.totalVotos == 0
+                      ? Colors.grey.shade200
+                      : Colors.green.shade100,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  respuesta.totalVotos == 0 ? 'Pendiente' : 'Gana $puntosReales pts',
+                  respuesta.totalVotos == 0
+                      ? 'Pendiente'
+                      : 'Gana $puntosReales pts',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
-                    color: respuesta.totalVotos == 0 ? Colors.grey.shade700 : Colors.green.shade800
+                    color: respuesta.totalVotos == 0
+                        ? Colors.grey.shade700
+                        : Colors.green.shade800,
                   ),
                 ),
-              )
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          
+
           // El texto de la respuesta
           Text(
             respuesta.contenido,
             style: const TextStyle(fontSize: 15, height: 1.4),
           ),
-          
+
           const Divider(height: 24),
-          
+
           // Pie: Las 5 Estrellas
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 respuesta.totalVotos == 0
-                    ? '0 votos'
-                    : '${respuesta.promedioEstrellas.toStringAsFixed(1)} ★ (${respuesta.totalVotos} votos)',
+                    ? 'Sin calificar'
+                    : '${respuesta.promedioEstrellas.toStringAsFixed(1)} ★ (${respuesta.totalVotos} ${respuesta.totalVotos == 1 ? 'calificacion' : 'calificaciones'})',
                 style: const TextStyle(color: Colors.grey, fontSize: 13),
               ),
               Row(
                 children: List.generate(5, (index) {
                   final starValue = index + 1;
-                  // La estrella se pinta si el usuario ya votó por ese valor, 
+                  // La estrella se pinta si el usuario ya votó por ese valor,
                   // o si nadie ha votado, se pinta según el promedio general.
-                  final isFilled = (respuesta.userVote > 0 && starValue <= respuesta.userVote) ||
-                                   (respuesta.userVote == 0 && starValue <= respuesta.promedioEstrellas.round());
-                  
+                  final isFilled =
+                      (respuesta.userVote > 0 &&
+                          starValue <= respuesta.userVote) ||
+                      (respuesta.userVote == 0 &&
+                          starValue <= respuesta.promedioEstrellas.round());
+
                   return InkWell(
                     onTap: () async {
                       try {
                         await ref
-                            .read(foroRespuestasProvider(widget.pregunta.id).notifier)
+                            .read(foroRespuestasProvider(preguntaId).notifier)
                             .calificar(respuesta.id, starValue);
                       } catch (e) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error al calificar: $e')),
+                            SnackBar(
+                              content: Text('Error al calificar: $e'),
+                              backgroundColor: Colors.red,
+                            ),
                           );
                         }
                       }
@@ -300,22 +358,31 @@ class _DetalleForoPreguntaPageState
               child: IconButton(
                 icon: const Icon(Icons.send, color: Colors.white),
                 onPressed: () async {
-                  final text = _replyController.text;
-                  if (text.trim().isNotEmpty) {
-                    try {
-                      await ref
-                          .read(foroRespuestasProvider(preguntaActual.id).notifier)
-                          .responder(preguntaActual.id, text);
-                      _replyController.clear();
-                      if (context.mounted) {
-                        FocusScope.of(context).unfocus();
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error al enviar: $e')),
-                        );
-                      }
+                  final text = _replyController.text.trim();
+                  if (text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Escribe una respuesta antes de enviar.'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  try {
+                    await ref
+                        .read(
+                          foroRespuestasProvider(preguntaActual.id).notifier,
+                        )
+                        .responder(preguntaActual.id, text);
+                    _replyController.clear();
+                    if (context.mounted) {
+                      FocusScope.of(context).unfocus();
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error al enviar: $e')),
+                      );
                     }
                   }
                 },
