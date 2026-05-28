@@ -12,7 +12,9 @@ import 'help_support_page.dart';
 import 'foro_page.dart';
 import 'pantalla_carga.dart';
 import 'perfil_page.dart';
-import '../../logic/providers/usuario_provider.dart';  // ← IMPORTANTE
+import '../../logic/providers/usuario_provider.dart';
+import 'detalle_foro_pregunta.dart';           // ← Para navegar al foro
+import '../../data/models/foro_pregunta.dart'; // ← Para crear la pregunta del foro
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -26,12 +28,14 @@ class _HomePageState extends ConsumerState<HomePage> {
   late final PublicacionesRepository _repository;
   List<Publicacion> _publicaciones = [];
   bool _cargando = true;
-  String _filtroEstado = 'pendiente';
+  String _filtroEstado = 'pendiente'; // 'todos', 'pendiente', 'resuelto'
 
   String? _filtroFacultadSeleccionada;
   String? _filtroMateriaSeleccionada;
   String? _filtroTipoSeleccionado;
   String _searchQuery = '';
+
+  Set<int> _idsConSoluciones = {};
 
   @override
   void initState() {
@@ -43,20 +47,38 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> _cargarPublicaciones() async {
     setState(() => _cargando = true);
     try {
+      // Obtener todas las publicaciones con los filtros (menos estado)
       final data = await _repository.getPublicaciones(
-        estado: _filtroEstado,
         idMateria: _filtroMateriaSeleccionada,
         idFacultad: _filtroFacultadSeleccionada,
         tipo: _filtroTipoSeleccionado,
         search: _searchQuery,
       );
 
+      // Cargar promedios de dificultad
       final actualizadas = await Future.wait(
         data.map((p) async {
           final avg = await _repository.getAverageDifficulty(p.id);
           return p.copyWith(promedioDificultad: avg);
         }),
       );
+
+      // Obtener IDs de publicaciones que tienen soluciones
+      if (actualizadas.isNotEmpty) {
+        final idsPublicaciones = actualizadas.map((p) => p.id).toList();
+        final solucionesRespuesta = await Supabase.instance.client
+            .from('soluciones')
+            .select('id_publicacion')
+            .inFilter('id_publicacion', idsPublicaciones);
+
+        final idsConSolucionesTemp = <int>{};
+        for (var item in solucionesRespuesta) {
+          idsConSolucionesTemp.add(item['id_publicacion'] as int);
+        }
+        _idsConSoluciones = idsConSolucionesTemp;
+      } else {
+        _idsConSoluciones = {};
+      }
 
       setState(() {
         _publicaciones = actualizadas;
@@ -69,6 +91,21 @@ class _HomePageState extends ConsumerState<HomePage> {
       });
       debugPrint('Error al cargar publicaciones: $e');
     }
+  }
+
+  bool _tieneSolucion(int idPublicacion) {
+    return _idsConSoluciones.contains(idPublicacion);
+  }
+
+  List<Publicacion> get _publicacionesFiltradas {
+    if (_filtroEstado == 'todos') {
+      return _publicaciones;
+    } else if (_filtroEstado == 'pendiente') {
+      return _publicaciones.where((pub) => !_tieneSolucion(pub.id)).toList();
+    } else if (_filtroEstado == 'resuelto') {
+      return _publicaciones.where((pub) => _tieneSolucion(pub.id)).toList();
+    }
+    return _publicaciones;
   }
 
   void _mostrarFiltrosDialog() {
@@ -155,7 +192,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       _cargarPublicaciones();
                     },
                     decoration: const InputDecoration(
-                      hintText: '¿Qué materia buscas hoy?',
+                      hintText: '¿Qué tema buscas hoy?',   // ← Cambiado
                       border: InputBorder.none,
                       hintStyle: TextStyle(color: Colors.grey),
                     ),
@@ -169,7 +206,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  // ← NUEVA: Insignia de reputación dinámica
   Widget _buildReputationBadge(int puntuacion) {
     return Center(
       child: Container(
@@ -257,7 +293,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 setState(() {
                   _filtroEstado = opcion['valor']!;
                 });
-                _cargarPublicaciones();
+                // No es necesario recargar publicaciones
               }
             },
             child: Container(
@@ -358,8 +394,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              pub.promedioDificultad?.toStringAsFixed(1) ??
-                                  '--',
+                              pub.promedioDificultad?.toStringAsFixed(1) ?? '--',
                               style: const TextStyle(fontSize: 11),
                             ),
                           ],
@@ -403,7 +438,25 @@ class _HomePageState extends ConsumerState<HomePage> {
                       SizedBox(
                         height: 28,
                         child: OutlinedButton(
-                          onPressed: () {}, // Foro action
+                          onPressed: () {
+                            // Crear la pregunta del foro con los datos de la publicación
+                            final preguntaForo = ForoPregunta(
+                              id: pub.id,
+                              titulo: pub.titulo,
+                              descripcion: pub.descripcion ?? '',
+                              autorNombre: 'Usuario', // Se puede mejorar si se obtiene el autor real
+                              votos: 0,
+                              puntosBase: pub.puntuacion,
+                              respuestasCount: 0,
+                              tiempo: pub.tiempo,
+                            );
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DetalleForoPreguntaPage(pregunta: preguntaForo),
+                              ),
+                            );
+                          },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFF007BFF),
                             side: const BorderSide(color: Color(0xFF007BFF)),
@@ -434,6 +487,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildHomeContent(BuildContext context) {
     final usuarioAsync = ref.watch(usuarioProvider);
+    final publicacionesMostrar = _publicacionesFiltradas;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -446,7 +500,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         ),
         automaticallyImplyLeading: false,
         actions: [
-          // Mostrar la puntuación dinámica del usuario
           usuarioAsync.when(
             data: (usuario) => _buildReputationBadge(usuario.puntuacion),
             loading: () => const SizedBox(
@@ -482,59 +535,63 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Saludo con nombre real del usuario
-            usuarioAsync.when(
-              data: (usuario) => Text(
-                '¡Hola, ${usuario.nombre}! 👋',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              loading: () => const Text(
-                'Cargando...',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              error: (_, __) => const Text(
-                '¡Hola! 👋',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 15),
-            _buildSearchBar(),
-            const SizedBox(height: 25),
-            _buildActionBanner(context),
-            const SizedBox(height: 25),
-            const Text(
-              'Problemas publicados',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            _buildStatusFilter(),
-            const SizedBox(height: 12),
-            if (_cargando)
-              const Center(child: CircularProgressIndicator())
-            else if (_publicaciones.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 40),
-                  child: Text(
-                    'No hay publicaciones aún.\n¡Sé el primero en publicar un ejercicio!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
-                  ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await _cargarPublicaciones();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              usuarioAsync.when(
+                data: (usuario) => Text(
+                  '¡Hola, ${usuario.nombre}! 👋',
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-              )
-            else
-              Column(
-                children: _publicaciones.map((pub) {
-                  return _buildProblemCard(pub);
-                }).toList(),
+                loading: () => const Text(
+                  'Cargando...',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                error: (_, __) => const Text(
+                  '¡Hola! 👋',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
               ),
-          ],
+              const SizedBox(height: 15),
+              _buildSearchBar(),
+              const SizedBox(height: 25),
+              _buildActionBanner(context),
+              const SizedBox(height: 25),
+              const Text(
+                'Problemas publicados',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              _buildStatusFilter(),
+              const SizedBox(height: 12),
+              if (_cargando)
+                const Center(child: CircularProgressIndicator())
+              else if (publicacionesMostrar.isEmpty)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40),
+                    child: Text(
+                      'No hay publicaciones con este filtro.\n¡Sé el primero en publicar un ejercicio!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                )
+              else
+                Column(
+                  children: publicacionesMostrar.map((pub) {
+                    return _buildProblemCard(pub);
+                  }).toList(),
+                ),
+            ],
+          ),
         ),
       ),
     );
