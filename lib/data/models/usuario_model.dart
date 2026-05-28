@@ -5,6 +5,7 @@ class UsuarioModel {
   final String cedula;
   final String carnet;
   final int? carreraId;
+  final int puntuacion;  // ← NUEVO: puntuación del usuario
 
   UsuarioModel({
     required this.id,
@@ -13,6 +14,7 @@ class UsuarioModel {
     required this.cedula,
     required this.carnet,
     this.carreraId,
+    this.puntuacion = 0,
   });
 
   factory UsuarioModel.fromJson(Map<String, dynamic> json) {
@@ -22,7 +24,10 @@ class UsuarioModel {
       apellido: json['apellido']?.toString() ?? '',
       cedula: json['cedula']?.toString() ?? '',
       carnet: json['carnet']?.toString() ?? '',
-      carreraId: json['carrera_id'] is int ? json['carrera_id'] as int : int.tryParse(json['carrera_id']?.toString() ?? ''),
+      carreraId: json['carrera_id'] is int
+          ? json['carrera_id'] as int
+          : int.tryParse(json['carrera_id']?.toString() ?? ''),
+      puntuacion: json['puntuacion'] ?? 0,
     );
   }
 
@@ -33,6 +38,7 @@ class UsuarioModel {
       'cedula': cedula,
       'carnet': carnet,
       'carrera_id': carreraId,
+      'puntuacion': puntuacion,
     };
   }
 
@@ -42,6 +48,7 @@ class UsuarioModel {
     String? cedula,
     String? carnet,
     int? carreraId,
+    int? puntuacion,
   }) {
     return UsuarioModel(
       id: id,
@@ -50,6 +57,7 @@ class UsuarioModel {
       cedula: cedula ?? this.cedula,
       carnet: carnet ?? this.carnet,
       carreraId: carreraId ?? this.carreraId,
+      puntuacion: puntuacion ?? this.puntuacion,
     );
   }
 }

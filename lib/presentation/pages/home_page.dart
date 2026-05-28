@@ -5,14 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/publicacion.dart';
 import '../../data/repositories/publicaciones_repository.dart';
-import '../../logic/providers/usuario_provider.dart';
 import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
 import 'filtro.dart';
 import 'help_support_page.dart';
 import 'foro_page.dart';
 import 'pantalla_carga.dart';
-import 'perfil_page.dart'; // <--- CAMBIO 1: Importamos tu nueva pantalla
+import 'perfil_page.dart';
+import '../../logic/providers/usuario_provider.dart';  // ← IMPORTANTE
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -51,7 +51,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         search: _searchQuery,
       );
 
-      // Cargar promedios de dificultad en paralelo (opcional, mejorando UX)
       final actualizadas = await Future.wait(
         data.map((p) async {
           final avg = await _repository.getAverageDifficulty(p.id);
@@ -71,8 +70,6 @@ class _HomePageState extends ConsumerState<HomePage> {
       debugPrint('Error al cargar publicaciones: $e');
     }
   }
-
-  // Eliminado _getAverageDifficulty y _avgCache ya que se maneja en el repositorio y copyWith
 
   void _mostrarFiltrosDialog() {
     showModalBottomSheet(
@@ -126,9 +123,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
           child: IconButton(
             icon: const Icon(Icons.tune, color: Color(0xFF007BFF)),
-            onPressed: () {
-              _mostrarFiltrosDialog();
-            },
+            onPressed: _mostrarFiltrosDialog,
           ),
         ),
         const SizedBox(width: 12),
@@ -174,7 +169,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _buildReputationBadge() {
+  // ← NUEVA: Insignia de reputación dinámica
+  Widget _buildReputationBadge(int puntuacion) {
     return Center(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -183,14 +179,14 @@ class _HomePageState extends ConsumerState<HomePage> {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.orange.shade200),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.stars, color: Colors.orange, size: 16),
-            SizedBox(width: 4),
+            const Icon(Icons.stars, color: Colors.orange, size: 16),
+            const SizedBox(width: 4),
             Text(
-              '125 pts',
-              style: TextStyle(
+              '$puntuacion pts',
+              style: const TextStyle(
                 color: Colors.orange,
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
@@ -286,36 +282,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         },
       ),
     );
-  }
-
-  Widget _buildGreeting() {
-    final usuarioAsync = ref.watch(usuarioProvider);
-    final nombrePerfil = usuarioAsync.maybeWhen(
-      data: (usuario) => usuario.nombre.trim(),
-      orElse: () => '',
-    );
-    final nombre = _nombreParaSaludo(nombrePerfil);
-    final saludo = nombre.isEmpty ? '¡Hola!' : '¡Hola, $nombre!';
-
-    return Text(
-      '$saludo 👋',
-      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-    );
-  }
-
-  String _nombreParaSaludo(String nombrePerfil) {
-    final email = Supabase.instance.client.auth.currentUser?.email ?? '';
-    final fuente = nombrePerfil.isNotEmpty ? nombrePerfil : email;
-    final partes = fuente
-        .trim()
-        .split(RegExp(r'[\s._\-@]+'))
-        .where((parte) => parte.isNotEmpty)
-        .toList();
-
-    if (partes.isEmpty) return '';
-    final primeraParte = partes.first;
-    return primeraParte[0].toUpperCase() +
-        primeraParte.substring(1).toLowerCase();
   }
 
   Widget _buildProblemCard(Publicacion pub) {
@@ -467,19 +433,32 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildHomeContent(BuildContext context) {
+    final usuarioAsync = ref.watch(usuarioProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF007BFF),
-        foregroundColor: Colors.white,
-        title: const Text('Braintask', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Braintask',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
         automaticallyImplyLeading: false,
         actions: [
-          _buildReputationBadge(),
-          //=================cambiar proximamente a perfil====================
+          // Mostrar la puntuación dinámica del usuario
+          usuarioAsync.when(
+            data: (usuario) => _buildReputationBadge(usuario.puntuacion),
+            loading: () => const SizedBox(
+              width: 40,
+              height: 40,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
           const SizedBox(width: 15),
           IconButton(
-            icon: const Icon(Icons.history),
+            icon: const Icon(Icons.history, color: Colors.black),
             onPressed: () {
               Navigator.push(
                 context,
@@ -489,7 +468,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             tooltip: 'Historial',
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.black),
             onPressed: () async {
               await Supabase.instance.client.auth.signOut();
               if (context.mounted) {
@@ -501,7 +480,6 @@ class _HomePageState extends ConsumerState<HomePage> {
             },
             tooltip: 'Cerrar sesión',
           ),
-          //==================================================================
         ],
       ),
       body: SingleChildScrollView(
@@ -510,7 +488,21 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildGreeting(),
+            // Saludo con nombre real del usuario
+            usuarioAsync.when(
+              data: (usuario) => Text(
+                '¡Hola, ${usuario.nombre}! 👋',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              loading: () => const Text(
+                'Cargando...',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              error: (_, __) => const Text(
+                '¡Hola! 👋',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            ),
             const SizedBox(height: 15),
             _buildSearchBar(),
             const SizedBox(height: 25),
@@ -561,7 +553,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           _cargarPublicaciones();
         },
       ),
-      const PerfilPage(), // <--- CAMBIO 2: Cambiamos el Text en construcción por PerfilPage
+      const PerfilPage(),
       const HelpSupportPage(),
     ];
 
