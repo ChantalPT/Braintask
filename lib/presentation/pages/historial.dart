@@ -27,16 +27,11 @@ class _HistorialState extends State<Historial> {
       setState(() => _cargando = false);
       return;
     }
+    debugPrint(
+      'Usuario autenticado: ${user.id}',
+    ); //ppppppppppppppppppppppppppppppp
 
     try {
-      // Obtener la cédula del usuario actual
-      final userData = await _supabase
-          .from('usuarios')
-          .select('cedula')
-          .eq('auth_user_id', user.id)
-          .single();
-      final cedula = userData['cedula'] as String;
-
       final publicaciones = await _supabase
           .from('publicaciones')
           .select('''
@@ -46,20 +41,26 @@ class _HistorialState extends State<Historial> {
           .eq('autor_id', user.id)
           .order('tiempo', ascending: false);
 
+      debugPrint(
+        'Publicaciones encontradas: ${publicaciones.length}',
+      ); //pppppppppppppppp
+
       final soluciones = await _supabase
           .from('soluciones')
           .select('''
             id_publicacion,
-            archivo_url,
-            comentario_solucion,
-            fecha_subida,
+            aceptada,
             publicaciones!inner (
               *,
               materias!left (nombre_materias)
             )
           ''')
-          .eq('cedula_usuario_solver', cedula)
+          .eq('usuario_id', user.id)
+          .eq('aceptada', true)
           .order('fecha_subida', ascending: false);
+      debugPrint(
+        'Soluciones aceptadas encontradas: ${soluciones.length}',
+      ); //ppppppppppppppppppppp
 
       setState(() {
         _misPublicaciones = List<Map<String, dynamic>>.from(publicaciones);
@@ -69,7 +70,7 @@ class _HistorialState extends State<Historial> {
         _cargando = false;
       });
     } catch (e) {
-      debugPrint('Error cargando historial: $e');
+      debugPrint('Error cargando historial: $e'); //ppppppppppppppppppppppppp
       setState(() => _cargando = false);
     }
   }
@@ -101,8 +102,8 @@ class _HistorialState extends State<Historial> {
                   Expanded(
                     child: TabBarView(
                       children: [
-                        _buildLista(_misPublicaciones, tipo: 'pedido'),
-                        _buildLista(_ejerciciosResueltos, tipo: 'resuelto'),
+                        _buildLista(_misPublicaciones),
+                        _buildLista(_ejerciciosResueltos),
                       ],
                     ),
                   ),
@@ -112,7 +113,7 @@ class _HistorialState extends State<Historial> {
     );
   }
 
-  Widget _buildLista(List<Map<String, dynamic>> items, {required String tipo}) {
+  Widget _buildLista(List<Map<String, dynamic>> items) {
     if (items.isEmpty) {
       return const Center(
         child: Text(
@@ -132,9 +133,6 @@ class _HistorialState extends State<Historial> {
               pub['materias']?['nombre_materias'] ?? 'Materia desconocida';
           final estado = pub['estado'] ?? 'pendiente';
           final estadoLabel = estado == 'pendiente' ? 'Pendiente' : 'Resuelto';
-          final icono = tipo == 'pedido'
-              ? (estado == 'pendiente' ? Icons.edit_note : Icons.check_circle)
-              : Icons.assignment_turned_in;
 
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -143,7 +141,10 @@ class _HistorialState extends State<Historial> {
               borderRadius: BorderRadius.circular(15),
             ),
             child: ListTile(
-              leading: Icon(icono, color: const Color(0xFF007BFF)),
+              leading: Icon(
+                estado == 'pendiente' ? Icons.edit_note : Icons.check_circle,
+                color: Color(0xFF007BFF),
+              ),
               title: Text(
                 pub['titulo'] ?? 'Sin título',
                 style: const TextStyle(fontWeight: FontWeight.bold),
