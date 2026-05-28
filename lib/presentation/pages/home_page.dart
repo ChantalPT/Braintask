@@ -13,7 +13,7 @@ import 'foro_page.dart';
 import 'pantalla_carga.dart';
 import 'perfil_page.dart';
 import '../../logic/providers/usuario_provider.dart';
-import 'detalle_foro_pregunta.dart';           // ← Para navegar al foro
+import 'detalle_foro_pregunta.dart'; // ← Para navegar al foro
 import '../../data/models/foro_pregunta.dart'; // ← Para crear la pregunta del foro
 
 class HomePage extends ConsumerStatefulWidget {
@@ -192,7 +192,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       _cargarPublicaciones();
                     },
                     decoration: const InputDecoration(
-                      hintText: '¿Qué tema buscas hoy?',   // ← Cambiado
+                      hintText: '¿Qué tema buscas hoy?', // ← Cambiado
                       border: InputBorder.none,
                       hintStyle: TextStyle(color: Colors.grey),
                     ),
@@ -394,7 +394,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              pub.promedioDificultad?.toStringAsFixed(1) ?? '--',
+                              pub.promedioDificultad?.toStringAsFixed(1) ??
+                                  '--',
                               style: const TextStyle(fontSize: 11),
                             ),
                           ],
@@ -444,7 +445,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                               id: pub.id,
                               titulo: pub.titulo,
                               descripcion: pub.descripcion ?? '',
-                              autorNombre: 'Usuario', // Se puede mejorar si se obtiene el autor real
+                              autorNombre:
+                                  'Usuario', // Se puede mejorar si se obtiene el autor real
                               votos: 0,
                               puntosBase: pub.puntuacion,
                               respuestasCount: 0,
@@ -453,7 +455,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => DetalleForoPreguntaPage(pregunta: preguntaForo),
+                                builder: (context) => DetalleForoPreguntaPage(
+                                  pregunta: preguntaForo,
+                                ),
                               ),
                             );
                           },
@@ -520,19 +524,6 @@ class _HomePageState extends ConsumerState<HomePage> {
             },
             tooltip: 'Historial',
           ),
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black),
-            onPressed: () async {
-              await Supabase.instance.client.auth.signOut();
-              if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const PantallaCarga()),
-                  (route) => false,
-                );
-              }
-            },
-            tooltip: 'Cerrar sesión',
-          ),
         ],
       ),
       body: RefreshIndicator(
@@ -548,7 +539,10 @@ class _HomePageState extends ConsumerState<HomePage> {
               usuarioAsync.when(
                 data: (usuario) => Text(
                   '¡Hola, ${usuario.nombre}! 👋',
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 loading: () => const Text(
                   'Cargando...',

@@ -55,7 +55,7 @@ class ForoRepository {
         .eq('id_publicacion', id)
         .single();
     final currentScore = (current['votos_foro'] as int?) ?? 0;
-    final newScore = (currentScore + difference).clamp(0, 999999);
+    final newScore = currentScore + difference;
 
     await _supabase
         .from('publicaciones')

@@ -266,8 +266,9 @@ class _DetalleForoPreguntaPageState
           const Divider(height: 24),
 
           // Pie: Las 5 Estrellas
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
                 respuesta.totalVotos == 0
@@ -276,6 +277,7 @@ class _DetalleForoPreguntaPageState
                 style: const TextStyle(color: Colors.grey, fontSize: 13),
               ),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: List.generate(5, (index) {
                   final starValue = index + 1;
                   // La estrella se pinta si el usuario ya votó por ese valor,

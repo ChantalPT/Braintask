@@ -586,8 +586,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                             ],
                             const Divider(height: 24),
                             // Estrellas y promedio
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 Text(
                                   totalVotos == 0
@@ -599,6 +600,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                                   ),
                                 ),
                                 Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: List.generate(5, (index) {
                                     final starValue = index + 1;
                                     // Resaltar estrellas según el promedio (visual)

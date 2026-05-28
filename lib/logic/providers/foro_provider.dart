@@ -44,7 +44,7 @@ class ForoPreguntas extends _$ForoPreguntas {
     final pub = priorState[pubIndex];
     final targetVote = isUpvote ? 1 : -1;
     final nextVote = pub.userVote == targetVote ? 0 : targetVote;
-    final difference = (nextVote - pub.userVote).clamp(-1, 1);
+    final difference = nextVote - pub.userVote;
 
     final prefs = await SharedPreferences.getInstance();
     if (nextVote == 0) {
@@ -56,10 +56,7 @@ class ForoPreguntas extends _$ForoPreguntas {
     state = AsyncData(
       priorState.map((p) {
         if (p.id == id) {
-          return p.copyWith(
-            votos: (p.votos + difference).clamp(0, 999999),
-            userVote: nextVote,
-          );
+          return p.copyWith(votos: p.votos + difference, userVote: nextVote);
         }
         return p;
       }).toList(),
