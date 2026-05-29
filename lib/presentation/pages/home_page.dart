@@ -9,7 +9,6 @@ import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
 import 'filtro.dart';
 import 'help_support_page.dart';
-import 'foro_page.dart';
 import 'pantalla_carga.dart';
 import 'perfil_page.dart';
 import '../../logic/providers/usuario_provider.dart';
@@ -28,7 +27,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   late final PublicacionesRepository _repository;
   List<Publicacion> _publicaciones = [];
   bool _cargando = true;
-  String _filtroEstado = 'pendiente'; // 'todos', 'pendiente', 'resuelto'
+  String _filtroEstado = 'todos'; // 'todos', 'pendiente', 'resuelto'
 
   String? _filtroFacultadSeleccionada;
   String? _filtroMateriaSeleccionada;
@@ -274,8 +273,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildStatusFilter() {
     final opciones = [
-      {'valor': 'pendiente', 'label': 'Pendientes'},
       {'valor': 'todos', 'label': 'Todos'},
+      {'valor': 'pendiente', 'label': 'Pendientes'},
       {'valor': 'resuelto', 'label': 'Resueltos'},
     ];
 
@@ -320,6 +319,40 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Widget _buildInfoChip({
+    required String label,
+    required Color color,
+    required Color backgroundColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _abrirDetallePublicacion(int publicacionId) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DetallePublicacionPage(
+          publicacionId: publicacionId,
+        ),
+      ),
+    );
+    _cargarPublicaciones();
+  }
+
   Widget _buildProblemCard(Publicacion pub) {
     String descripcionPreview = (pub.descripcion ?? '').trim();
     if (descripcionPreview.length > 120) {
@@ -328,15 +361,31 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (descripcionPreview.isEmpty) {
       descripcionPreview = 'Sin descripción';
     }
+    final estaResuelto = _tieneSolucion(pub.id);
+    final estadoLabel = estaResuelto ? 'Resuelto' : 'Pendiente';
+    final estadoColor = estaResuelto ? const Color(0xFF2E7D32) : Colors.orange;
+    final estadoBackground = estaResuelto
+        ? const Color(0xFFE8F5E9)
+        : const Color(0xFFFFF3E0);
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final esMiPregunta = pub.autorId != null && pub.autorId == currentUserId;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      child: Material(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(15),
+          onTap: estaResuelto ? () => _abrirDetallePublicacion(pub.id) : null,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -348,6 +397,30 @@ class _HomePageState extends ConsumerState<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _buildInfoChip(
+                          label: esMiPregunta
+                              ? 'Tu pregunta'
+                              : 'Pregunta de otro usuario',
+                          color: esMiPregunta
+                              ? const Color(0xFF1565C0)
+                              : const Color(0xFF455A64),
+                          backgroundColor: esMiPregunta
+                              ? const Color(0xFFE3F2FD)
+                              : const Color(0xFFECEFF1),
+                        ),
+                        if (_filtroEstado == 'todos')
+                          _buildInfoChip(
+                            label: estadoLabel,
+                            color: estadoColor,
+                            backgroundColor: estadoBackground,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
                     Text(
                       pub.titulo,
                       style: const TextStyle(
@@ -414,24 +487,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                       SizedBox(
                         height: 28,
                         child: ElevatedButton(
-                          onPressed: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DetallePublicacionPage(
-                                  publicacionId: pub.id,
-                                ),
-                              ),
-                            );
-                            _cargarPublicaciones();
-                          },
+                          onPressed: () => _abrirDetallePublicacion(pub.id),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF007BFF),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             textStyle: const TextStyle(fontSize: 11),
                           ),
-                          child: const Text('Resolver'),
+                          child: Text(estaResuelto ? 'Ver respuesta' : 'Resolver'),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -475,6 +538,9 @@ class _HomePageState extends ConsumerState<HomePage> {
           const SizedBox(height: 8),
           Text(descripcionPreview, style: const TextStyle(fontSize: 12)),
         ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -601,7 +667,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       _buildHomeContent(context),
-      const ForoPage(),
       PublicarPage(
         onSubmitSuccess: () {
           setState(() {
@@ -626,10 +691,6 @@ class _HomePageState extends ConsumerState<HomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.home_filled),
             label: 'Inicio',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.forum_outlined),
-            label: 'Foros',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.add_box_outlined),

@@ -227,6 +227,15 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   Future<void> _subirYEnviarSolucion() async {
     if (_currentUserId == null) return;
 
+    if (_publicacion?['autor_id'] == _currentUserId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No puedes responder a tu propia pregunta.'),
+        ),
+      );
+      return;
+    }
+
     if (_solucionController.text.trim().isEmpty && _archivoSolucion == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -646,7 +655,6 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   Widget _buildFormularioSolucion() {
     if (_publicacion == null) return const SizedBox.shrink();
     final esMiPropioEjercicio = _publicacion!['autor_id'] == _currentUserId;
-    if (esMiPropioEjercicio) return const SizedBox.shrink();
 
     return Card(
       margin: const EdgeInsets.only(top: 16),
@@ -661,12 +669,31 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               'Montar tu solución',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
+            if (esMiPropioEjercicio) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3E0),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: const Text(
+                  'No puedes responder a tu propia pregunta.',
+                  style: TextStyle(
+                    color: Colors.deepOrange,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 15),
             SizedBox(
               width: double.infinity,
               height: 48,
               child: OutlinedButton.icon(
-                onPressed: _enviandoSolucion
+                onPressed: _enviandoSolucion || esMiPropioEjercicio
                     ? null
                     : _seleccionarArchivoSolucion,
                 icon: const Icon(Icons.add_photo_alternate, size: 22),
@@ -691,7 +718,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
             TextField(
               controller: _solucionController,
               maxLines: 3,
-              enabled: !_enviandoSolucion,
+              enabled: !_enviandoSolucion && !esMiPropioEjercicio,
               decoration: InputDecoration(
                 hintText: 'Explica tu resolución...',
                 border: OutlineInputBorder(
@@ -704,7 +731,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: _enviandoSolucion ? null : _subirYEnviarSolucion,
+                onPressed: _enviandoSolucion || esMiPropioEjercicio
+                    ? null
+                    : _subirYEnviarSolucion,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF007BFF),
                 ),
