@@ -61,7 +61,7 @@ class _DetalleForoPreguntaPageState
                   _buildPreguntaCompleta(context, currentPregunta),
                   const Divider(height: 32),
                   const Text(
-                    'Soluciones Propuestas',
+                    'Discusión del ejercicio',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
@@ -71,7 +71,7 @@ class _DetalleForoPreguntaPageState
                     data: (respuestas) {
                       if (respuestas.isEmpty) {
                         return const Center(
-                          child: Text('Sé el primero en subir una solución.'),
+                          child: Text('Sé el primero en comentar en el foro.'),
                         );
                       }
                       return Column(
@@ -340,7 +340,7 @@ class _DetalleForoPreguntaPageState
                 child: TextField(
                   controller: _replyController,
                   decoration: const InputDecoration(
-                    hintText: 'Añadir una solución...',
+                    hintText: 'Añadir un comentario...',
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: 16,

@@ -150,13 +150,12 @@ class ForoRepository {
 
   Future<void> _crearPerfilMinimo(String userId, String email) async {
     final fallbackId = _idNumericoDesdeUuid(userId);
-    final nombre = email.split('@').first;
 
     final insertResult = await _supabase
         .from('usuarios')
         .insert({
           'auth_user_id': userId,
-          'nombre': nombre.isEmpty ? 'Usuario' : nombre,
+          'nombre': 'Usuario',
           'apellido': '',
           'cedula': fallbackId,
           'carnet': fallbackId.toString(),

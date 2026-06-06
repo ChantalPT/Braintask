@@ -59,7 +59,7 @@ class HelpSupportPage extends StatelessWidget {
               '¿Cómo publico una pregunta?',
               'Presiona Publicar y completa los datos del ejercicio.',
               '¿Dónde veo mis publicaciones?',
-              'Puedes revisarlas desde Foros o Mis Preguntas.',
+              'Puedes revisarlas desde Inicio o tu Historial.',
             ]),
           ),
 
