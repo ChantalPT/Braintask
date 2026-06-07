@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:braintask/presentation/pages/detalle_foro_pregunta.dart';
+import 'package:braintask/presentation/pages/perfil_publico_page.dart';
 import 'package:braintask/data/models/foro_pregunta.dart';
 
 class DetallePublicacionPage extends StatefulWidget {
@@ -528,11 +529,37 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  autor,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue,
+                                InkWell(
+                                  onTap: () {
+                                      final solverId = sol['usuario_id'] ?? sol['cedula_usuario_solver']?.toString();
+                                      if (solverId != null) {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => PerfilPublicoPage(
+                                              userId: solverId,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.person,
+                                        color: Colors.blue,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        autor,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 Container(

@@ -24,3 +24,4 @@
   - Plan and batch tool calls. No incremental read/write cycles for minor tweaks.
   - Restrict scope strictly to user-provided files. Do not read unrelated files.
   - Generate standard Flutter/Riverpod implementations directly in one block without over-analyzing state.
+  - The integrated terminal is Windows PowerShell. You must exclusively use PowerShell commands. Under no circumstances use commands such as "grep", "cat", etc.
