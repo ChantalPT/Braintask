@@ -12,7 +12,7 @@ import 'help_support_page.dart';
 import 'pantalla_carga.dart';
 import 'perfil_page.dart';
 import '../../logic/providers/usuario_provider.dart';
-import 'detalle_foro_pregunta.dart';           // ← Para navegar al foro
+import 'detalle_foro_pregunta.dart'; // ← Para navegar al foro
 import '../../data/models/foro_pregunta.dart'; // ← Para crear la pregunta del foro
 
 class HomePage extends ConsumerStatefulWidget {
@@ -33,8 +33,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   String? _filtroMateriaSeleccionada;
   String? _filtroTipoSeleccionado;
   String _searchQuery = '';
-
-  Set<int> _idsConSoluciones = {};
 
   @override
   void initState() {
@@ -62,23 +60,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         }),
       );
 
-      // Obtener IDs de publicaciones que tienen soluciones
-      if (actualizadas.isNotEmpty) {
-        final idsPublicaciones = actualizadas.map((p) => p.id).toList();
-        final solucionesRespuesta = await Supabase.instance.client
-            .from('soluciones')
-            .select('id_publicacion')
-            .inFilter('id_publicacion', idsPublicaciones);
-
-        final idsConSolucionesTemp = <int>{};
-        for (var item in solucionesRespuesta) {
-          idsConSolucionesTemp.add(item['id_publicacion'] as int);
-        }
-        _idsConSoluciones = idsConSolucionesTemp;
-      } else {
-        _idsConSoluciones = {};
-      }
-
       setState(() {
         _publicaciones = actualizadas;
         _cargando = false;
@@ -92,17 +73,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  bool _tieneSolucion(int idPublicacion) {
-    return _idsConSoluciones.contains(idPublicacion);
-  }
-
   List<Publicacion> get _publicacionesFiltradas {
     if (_filtroEstado == 'todos') {
       return _publicaciones;
     } else if (_filtroEstado == 'pendiente') {
-      return _publicaciones.where((pub) => !_tieneSolucion(pub.id)).toList();
+      return _publicaciones.where((pub) => pub.estado != 'resuelto').toList();
     } else if (_filtroEstado == 'resuelto') {
-      return _publicaciones.where((pub) => _tieneSolucion(pub.id)).toList();
+      return _publicaciones.where((pub) => pub.estado == 'resuelto').toList();
     }
     return _publicaciones;
   }
@@ -191,7 +168,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       _cargarPublicaciones();
                     },
                     decoration: const InputDecoration(
-                      hintText: '¿Qué tema buscas hoy?',   // ← Cambiado
+                      hintText: '¿Qué tema buscas hoy?', // ← Cambiado
                       border: InputBorder.none,
                       hintStyle: TextStyle(color: Colors.grey),
                     ),
@@ -345,9 +322,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DetallePublicacionPage(
-          publicacionId: publicacionId,
-        ),
+        builder: (context) =>
+            DetallePublicacionPage(publicacionId: publicacionId),
       ),
     );
     _cargarPublicaciones();
@@ -361,7 +337,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (descripcionPreview.isEmpty) {
       descripcionPreview = 'Sin descripción';
     }
-    final estaResuelto = _tieneSolucion(pub.id);
+    final estaResuelto = pub.estado == 'resuelto';
     final estadoLabel = estaResuelto ? 'Resuelto' : 'Pendiente';
     final estadoColor = estaResuelto ? const Color(0xFF2E7D32) : Colors.orange;
     final estadoBackground = estaResuelto
@@ -378,7 +354,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           borderRadius: BorderRadius.circular(15),
-          onTap: estaResuelto ? () => _abrirDetallePublicacion(pub.id) : null,
+          onTap: () => _abrirDetallePublicacion(pub.id),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -386,89 +362,167 @@ class _HomePageState extends ConsumerState<HomePage> {
               border: Border.all(color: Colors.grey.shade200),
             ),
             child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.forum_outlined, color: Color(0xFF007BFF)),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        _buildInfoChip(
-                          label: esMiPregunta
-                              ? 'Tu pregunta'
-                              : 'Pregunta de otro usuario',
-                          color: esMiPregunta
-                              ? const Color(0xFF1565C0)
-                              : const Color(0xFF455A64),
-                          backgroundColor: esMiPregunta
-                              ? const Color(0xFFE3F2FD)
-                              : const Color(0xFFECEFF1),
-                        ),
-                        if (_filtroEstado == 'todos')
-                          _buildInfoChip(
-                            label: estadoLabel,
-                            color: estadoColor,
-                            backgroundColor: estadoBackground,
+                    const Icon(Icons.forum_outlined, color: Color(0xFF007BFF)),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              _buildInfoChip(
+                                label: esMiPregunta
+                                    ? 'Tu pregunta'
+                                    : 'Pregunta de otro usuario',
+                                color: esMiPregunta
+                                    ? const Color(0xFF1565C0)
+                                    : const Color(0xFF455A64),
+                                backgroundColor: esMiPregunta
+                                    ? const Color(0xFFE3F2FD)
+                                    : const Color(0xFFECEFF1),
+                              ),
+                              if (_filtroEstado == 'todos')
+                                _buildInfoChip(
+                                  label: estadoLabel,
+                                  color: estadoColor,
+                                  backgroundColor: estadoBackground,
+                                ),
+                            ],
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      pub.titulo,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                          const SizedBox(height: 6),
+                          Text(
+                            pub.titulo,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            pub.nombreMateria ?? 'Materia desconocida',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.monetization_on,
+                                    size: 14,
+                                    color: Colors.orange,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${pub.puntuacion} pts',
+                                    style: const TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.star,
+                                    size: 12,
+                                    color: Colors.amber,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    pub.promedioDificultad?.toStringAsFixed(
+                                          1,
+                                        ) ??
+                                        '--',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      pub.nombreMateria ?? 'Materia desconocida',
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                              Icons.monetization_on,
-                              size: 14,
-                              color: Colors.orange,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${pub.puntuacion} pts',
-                              style: const TextStyle(
-                                color: Colors.orange,
-                                fontSize: 11,
+                            SizedBox(
+                              height: 28,
+                              child: ElevatedButton(
+                                onPressed: () =>
+                                    _abrirDetallePublicacion(pub.id),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF007BFF),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  textStyle: const TextStyle(fontSize: 11),
+                                ),
+                                child: Text(
+                                  estaResuelto ? 'Ver respuesta' : 'Resolver',
+                                ),
                               ),
                             ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.star,
-                              size: 12,
-                              color: Colors.amber,
-                            ),
                             const SizedBox(width: 4),
-                            Text(
-                              pub.promedioDificultad?.toStringAsFixed(1) ?? '--',
-                              style: const TextStyle(fontSize: 11),
+                            SizedBox(
+                              height: 28,
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  // Crear la pregunta del foro con los datos de la publicación
+                                  final preguntaForo = ForoPregunta(
+                                    id: pub.id,
+                                    titulo: pub.titulo,
+                                    descripcion: pub.descripcion ?? '',
+                                    autorNombre:
+                                        'Usuario', // Se puede mejorar si se obtiene el autor real
+                                    votos: 0,
+                                    puntosBase: pub.puntuacion,
+                                    respuestasCount: 0,
+                                    tiempo: pub.tiempo,
+                                  );
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          DetalleForoPreguntaPage(
+                                            pregunta: preguntaForo,
+                                          ),
+                                    ),
+                                  );
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF007BFF),
+                                  side: const BorderSide(
+                                    color: Color(0xFF007BFF),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  textStyle: const TextStyle(fontSize: 11),
+                                ),
+                                child: const Text('Foro'),
+                              ),
                             ),
                           ],
                         ),
@@ -476,68 +530,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        height: 28,
-                        child: ElevatedButton(
-                          onPressed: () => _abrirDetallePublicacion(pub.id),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF007BFF),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            textStyle: const TextStyle(fontSize: 11),
-                          ),
-                          child: Text(estaResuelto ? 'Ver respuesta' : 'Resolver'),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      SizedBox(
-                        height: 28,
-                        child: OutlinedButton(
-                          onPressed: () {
-                            // Crear la pregunta del foro con los datos de la publicación
-                            final preguntaForo = ForoPregunta(
-                              id: pub.id,
-                              titulo: pub.titulo,
-                              descripcion: pub.descripcion ?? '',
-                              autorNombre: 'Usuario', // Se puede mejorar si se obtiene el autor real
-                              votos: 0,
-                              puntosBase: pub.puntuacion,
-                              respuestasCount: 0,
-                              tiempo: pub.tiempo,
-                            );
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DetalleForoPreguntaPage(pregunta: preguntaForo),
-                              ),
-                            );
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF007BFF),
-                            side: const BorderSide(color: Color(0xFF007BFF)),
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            textStyle: const TextStyle(fontSize: 11),
-                          ),
-                          child: const Text('Foro'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(descripcionPreview, style: const TextStyle(fontSize: 12)),
-        ],
+                const SizedBox(height: 8),
+                Text(descripcionPreview, style: const TextStyle(fontSize: 12)),
+              ],
             ),
           ),
         ),
@@ -614,7 +609,10 @@ class _HomePageState extends ConsumerState<HomePage> {
               usuarioAsync.when(
                 data: (usuario) => Text(
                   '¡Hola, ${usuario.nombre}! 👋',
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 loading: () => const Text(
                   'Cargando...',

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:braintask/presentation/pages/detalle_foro_pregunta.dart';
 import 'package:braintask/data/models/foro_pregunta.dart';
+import 'package:braintask/data/repositories/solucion_repository.dart';
 
 class DetallePublicacionPage extends StatefulWidget {
   final int publicacionId;
@@ -15,6 +16,7 @@ class DetallePublicacionPage extends StatefulWidget {
 
 class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   final _supabase = Supabase.instance.client;
+  late final SolucionesRepository _solucionesRepository;
   Map<String, dynamic>? _publicacion;
   List<Map<String, dynamic>> _soluciones = [];
   bool _cargandoPublicacion = true;
@@ -22,7 +24,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   String? _error;
 
   final TextEditingController _solucionController = TextEditingController();
-  File? _archivoSolucion;
+  Uint8List? _archivoSolucionBytes;
   String? _nombreArchivoSolucion;
   bool _enviandoSolucion = false;
   String? _cedulaUsuario;
@@ -31,6 +33,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   @override
   void initState() {
     super.initState();
+    _solucionesRepository = SolucionesRepository(_supabase);
     _cargarTodo();
     _obtenerDatosUsuario();
   }
@@ -179,16 +182,18 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
       return;
     }
 
-    try {
-      await _supabase
-          .from('soluciones')
-          .update({'aceptada': true})
-          .eq('id_solucion', idSolucion);
+    if (_publicacion?['estado'] == 'resuelto') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Esta publicaciÃ³n ya fue resuelta')),
+      );
+      return;
+    }
 
-      await _supabase
-          .from('publicaciones')
-          .update({'estado': 'resuelto'})
-          .eq('id_publicacion', widget.publicacionId);
+    try {
+      await _solucionesRepository.aceptarSolucion(
+        idPublicacion: widget.publicacionId,
+        idSolucion: idSolucion,
+      );
 
       await _recargarSoluciones();
       await _cargarTodo();
@@ -215,17 +220,35 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     final resultado = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'png', 'jpeg'],
+      withData: true,
     );
-    if (resultado != null && resultado.files.single.path != null) {
+    final archivo = resultado?.files.single;
+    if (archivo != null && archivo.bytes != null) {
       setState(() {
-        _archivoSolucion = File(resultado.files.single.path!);
-        _nombreArchivoSolucion = resultado.files.single.name;
+        _archivoSolucionBytes = archivo.bytes;
+        _nombreArchivoSolucion = archivo.name;
       });
     }
   }
 
   Future<void> _subirYEnviarSolucion() async {
     if (_currentUserId == null) return;
+
+    final estaPendiente = await _solucionesRepository.publicacionEstaPendiente(
+      widget.publicacionId,
+    );
+    if (!mounted) return;
+
+    if (!estaPendiente) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Esta publicacion ya fue resuelta'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      await _cargarTodo();
+      return;
+    }
 
     if (_publicacion?['autor_id'] == _currentUserId) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -236,7 +259,8 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
       return;
     }
 
-    if (_solucionController.text.trim().isEmpty && _archivoSolucion == null) {
+    if (_solucionController.text.trim().isEmpty &&
+        _archivoSolucionBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Escribe una explicación o adjunta un archivo.'),
@@ -253,13 +277,21 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     String? urlArchivoSubido;
 
     try {
-      if (_archivoSolucion != null) {
-        final extension = _archivoSolucion!.path.split('.').last;
+      if (_archivoSolucionBytes != null) {
+        final extension = (_nombreArchivoSolucion ?? 'jpg').split('.').last;
         final pathArchivo =
             'soluciones/${DateTime.now().millisecondsSinceEpoch}.$extension';
         await _supabase.storage
             .from('soluciones')
-            .upload(pathArchivo, _archivoSolucion!);
+            .uploadBinary(
+              pathArchivo,
+              _archivoSolucionBytes!,
+              fileOptions: FileOptions(
+                contentType: extension.toLowerCase() == 'pdf'
+                    ? 'application/pdf'
+                    : 'image/jpeg',
+              ),
+            );
         urlArchivoSubido = _supabase.storage
             .from('soluciones')
             .getPublicUrl(pathArchivo);
@@ -279,7 +311,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
 
       _solucionController.clear();
       setState(() {
-        _archivoSolucion = null;
+        _archivoSolucionBytes = null;
         _nombreArchivoSolucion = null;
       });
 
@@ -352,7 +384,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     final titulo = pub['titulo'] ?? 'Sin título';
     final descripcion = pub['descripcion'] ?? 'Sin descripción';
     final puntosBase = pub['puntuacion'] ?? 0;
-    final archivoPubUrl = pub['archivo_url'];
+    final archivoPubUrl = pub['foto_url'] ?? pub['archivo_url'];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -495,6 +527,8 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                   itemBuilder: (context, index) {
                     final sol = _soluciones[index];
                     final esAutor = _publicacion?['autor_id'] == _currentUserId;
+                    final publicacionResuelta =
+                        _publicacion?['estado'] == 'resuelto';
                     final estaAceptada = sol['aceptada'] == true;
                     //final sol = _soluciones[index];
                     final autor = sol['usuarios'] != null
@@ -562,7 +596,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                               ],
                             ),
                             const SizedBox(height: 10),
-                            if (esAutor && !estaAceptada)
+                            if (esAutor &&
+                                !publicacionResuelta &&
+                                !estaAceptada)
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
                                 child: ElevatedButton(
@@ -589,7 +625,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                                 sol['comentario_solucion'],
                                 style: const TextStyle(fontSize: 14),
                               ),
-                            if (sol['archivo_url'] != null) ...[
+                            if ((sol['archivo_url'] ?? '').isNotEmpty) ...[
                               const SizedBox(height: 10),
                               _buildArchivoGrande(sol['archivo_url']),
                             ],
@@ -655,6 +691,30 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   Widget _buildFormularioSolucion() {
     if (_publicacion == null) return const SizedBox.shrink();
     final esMiPropioEjercicio = _publicacion!['autor_id'] == _currentUserId;
+    final estaResuelta = _publicacion!['estado'] == 'resuelto';
+
+    if (estaResuelta) {
+      return Card(
+        margin: const EdgeInsets.only(top: 16),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green.shade700),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Solicitud cerrada: ya hay una soluciÃ³n aceptada.',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Card(
       margin: const EdgeInsets.only(top: 16),

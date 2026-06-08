@@ -51,11 +51,38 @@ class _HistorialState extends State<Historial> {
           .eq('aceptada', true)
           .order('created_at', ascending: false);
 
+      final publicacionesResueltas = await _supabase
+          .from('publicaciones')
+          .select('''
+            *,
+            materias!left (nombre_materias)
+          ''')
+          .eq('autor_id', user.id)
+          .eq('estado', 'resuelto')
+          .order('tiempo', ascending: false);
+
+      final ejerciciosResueltos = <Map<String, dynamic>>[];
+      final idsAgregados = <dynamic>{};
+
+      for (final pub in publicacionesResueltas) {
+        final publicacion = Map<String, dynamic>.from(pub);
+        ejerciciosResueltos.add(publicacion);
+        idsAgregados.add(publicacion['id_publicacion']);
+      }
+
+      for (final solucion in soluciones) {
+        final publicacion = Map<String, dynamic>.from(
+          solucion['publicaciones'],
+        );
+        final idPublicacion = publicacion['id_publicacion'];
+        if (idsAgregados.add(idPublicacion)) {
+          ejerciciosResueltos.add(publicacion);
+        }
+      }
+
       setState(() {
         _misPublicaciones = List<Map<String, dynamic>>.from(publicaciones);
-        _ejerciciosResueltos = soluciones
-            .map((s) => s['publicaciones'] as Map<String, dynamic>)
-            .toList();
+        _ejerciciosResueltos = ejerciciosResueltos;
         _cargando = false;
       });
     } catch (e) {
