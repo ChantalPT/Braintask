@@ -89,7 +89,6 @@
 | `created_at` | `timestamptz` |  Nullable |
 | `usuario_id` | `uuid` |  Nullable |
 | `aceptada` | `bool` |  Nullable |
-| `votos` | `int4` |  |
 
 ## Table `calificaciones_dificultad`
 
@@ -137,3 +136,17 @@
 | `monto` | `int8` |  |
 | `fecha_pago` | `timestamptz` |  Nullable |
 | `created_at` | `timestamptz` |  Nullable |
+
+## Table `foro_comentarios`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id_comentario` | `int8` | Primary Identity |
+| `publicacion_id` | `int8` |  Nullable |
+| `usuario_cedula` | `int8` |  Nullable |
+| `contenido` | `text` |  |
+| `votos` | `int4` |  Nullable |
+| `fecha_creacion` | `timestamptz` |  |
+

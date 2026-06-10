@@ -1,20 +1,22 @@
 class Solucion {
   final int idSolucion;
   final int idPublicacion;
-  final String usuarioId;
+  final int? cedulaUsuarioSolver;
+  final String? usuarioId; // uuid, solo para auth checks
   final String? archivoUrl;
   final String? comentarioSolucion;
   final DateTime fechaSubida;
   final bool aceptada;
 
-  // Datos relacionales del usuario (cargados con join)
+  // Datos relacionales del usuario (cargados con join via cedula_usuario_solver)
   final String? nombreUsuario;
   final String? apellidoUsuario;
 
   Solucion({
     required this.idSolucion,
     required this.idPublicacion,
-    required this.usuarioId,
+    this.cedulaUsuarioSolver,
+    this.usuarioId,
     this.archivoUrl,
     this.comentarioSolucion,
     required this.fechaSubida,
@@ -28,7 +30,10 @@ class Solucion {
     return Solucion(
       idSolucion: json['id_solucion'],
       idPublicacion: json['id_publicacion'],
-      usuarioId: json['usuario_id'] ?? '',
+      cedulaUsuarioSolver: json['cedula_usuario_solver'] is int
+          ? json['cedula_usuario_solver'] as int
+          : int.tryParse(json['cedula_usuario_solver']?.toString() ?? ''),
+      usuarioId: json['usuario_id']?.toString(),
       archivoUrl: json['archivo_url'],
       comentarioSolucion: json['comentario_solucion'],
       fechaSubida: DateTime.parse(json['fecha_subida']),
@@ -40,6 +45,7 @@ class Solucion {
 
   Map<String, dynamic> toJson() => {
     'id_publicacion': idPublicacion,
+    'cedula_usuario_solver': cedulaUsuarioSolver,
     'usuario_id': usuarioId,
     'archivo_url': archivoUrl,
     'comentario_solucion': comentarioSolucion,

@@ -117,7 +117,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
       final solData = await _supabase
           .from('soluciones')
           .select(
-            '*, usuarios(nombre, apellido), calificacion_soluciones(usuario_id, estrellas)',
+            '*, usuarios!cedula_usuario_solver(nombre, apellido), calificacion_soluciones(usuario_id, estrellas)',
           )
           .eq('id_publicacion', widget.publicacionId)
           .order('fecha_subida', ascending: false);
@@ -319,11 +319,29 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
   }
 
-  void _irAPerfil(String userId) {
+  /// Navega al perfil pasando directamente un auth_user_id (UUID).
+  void _irAPerfil(String authUserId) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => PerfilPublicoPage(userId: userId)),
+      MaterialPageRoute(builder: (_) => PerfilPublicoPage(userId: authUserId)),
     );
+  }
+
+  /// Navega al perfil buscando primero el auth_user_id por cédula (int).
+  Future<void> _irAPerfilPorCedula(int cedula) async {
+    try {
+      final data = await _supabase
+          .from('usuarios')
+          .select('auth_user_id')
+          .eq('cedula', cedula)
+          .maybeSingle();
+      final authId = data?['auth_user_id']?.toString();
+      if (authId != null && mounted) {
+        _irAPerfil(authId);
+      }
+    } catch (e) {
+      if (mounted) _snack('No se pudo abrir el perfil', color: Colors.red);
+    }
   }
 
   // ── BUILD ────────────────────────────────────────────────────────────────────
@@ -655,7 +673,11 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
     final esAutorPublicacion = _publicacion?['autor_id'] == _currentUserId;
     final estaAceptada = sol['aceptada'] == true;
-    final solverId = sol['usuario_id']?.toString();
+    // Usamos cedula_usuario_solver (int8) para buscar el auth_user_id y navegar al perfil
+    final cedulaSolverRaw = sol['cedula_usuario_solver'];
+    final cedulaSolverInt = cedulaSolverRaw is int
+        ? cedulaSolverRaw
+        : int.tryParse(cedulaSolverRaw?.toString() ?? '');
     final autor = sol['usuarios'] != null
         ? '${sol['usuarios']['nombre']} ${sol['usuarios']['apellido']}'
         : 'Usuario desconocido';
@@ -692,7 +714,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 InkWell(
-                  onTap: solverId != null ? () => _irAPerfil(solverId) : null,
+                  onTap: cedulaSolverInt != null
+                      ? () => _irAPerfilPorCedula(cedulaSolverInt)
+                      : null,
                   borderRadius: BorderRadius.circular(8),
                   child: Row(
                     children: [
@@ -850,7 +874,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   }
 
   Widget _buildComentarioCard(Comentario comentario) {
-    final autorId = comentario.usuarioCedula.toString();
+    final cedulaAutor = comentario.usuarioCedula;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       elevation: 0,
@@ -908,7 +932,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   InkWell(
-                    onTap: () => _irAPerfil(autorId),
+                    onTap: () => _irAPerfilPorCedula(cedulaAutor),
                     borderRadius: BorderRadius.circular(4),
                     child: Text(
                       comentario.nombreCompleto,
@@ -1038,7 +1062,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
           height: 200,
           width: double.infinity,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(
+          errorBuilder: (context, error, stackTrace) => Container(
             height: 80,
             color: Colors.grey.shade100,
             child: const Center(

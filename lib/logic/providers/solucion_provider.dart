@@ -27,14 +27,16 @@ class SolucionesNotifier extends _$SolucionesNotifier {
     File? archivo,
   }) async {
     final usuario = await ref.read(usuarioProvider.future);
-    final usuarioId = usuario.authUserId ?? '';
+    final cedulaInt = int.tryParse(usuario.cedula) ?? 0;
+    final authId = usuario.authUserId ?? '';
 
     final priorState = state.value ?? [];
     final tempId = DateTime.now().millisecondsSinceEpoch;
     final nuevaLocal = Solucion(
       idSolucion: tempId,
       idPublicacion: idPublicacion,
-      usuarioId: usuarioId,
+      cedulaUsuarioSolver: cedulaInt,
+      usuarioId: authId,
       archivoUrl: null,
       comentarioSolucion: comentario,
       fechaSubida: DateTime.now(),
@@ -45,7 +47,8 @@ class SolucionesNotifier extends _$SolucionesNotifier {
       final repo = ref.read(solucionesRepositoryProvider);
       await repo.subirSolucion(
         idPublicacion: idPublicacion,
-        usuarioId: usuarioId,
+        cedulaUsuarioSolver: cedulaInt,
+        usuarioId: authId,
         comentario: comentario,
         archivo: archivo,
       );

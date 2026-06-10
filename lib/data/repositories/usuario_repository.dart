@@ -38,4 +38,14 @@ class UsuarioRepository {
 
     return UsuarioModel.fromJson(data);
   }
+
+  Future<UsuarioModel> obtenerPerfilPorCedula(int cedula) async {
+    final data = await _supabase
+        .from('usuarios')
+        .select()
+        .eq('cedula', cedula)
+        .single();
+
+    return UsuarioModel.fromJson(data);
+  }
 }

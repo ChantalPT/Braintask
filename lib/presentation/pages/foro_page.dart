@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/foro_pregunta.dart';
 import '../../logic/providers/foro_provider.dart';
-import 'detalle_foro_pregunta.dart';
 
 class ForoPage extends ConsumerWidget {
   const ForoPage({super.key});
