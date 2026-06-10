@@ -68,7 +68,7 @@ class SolucionesRepository {
 
     final solucion = await _supabase
         .from('soluciones')
-        .select('id_solucion')
+        .select('id_solucion, usuario_id')
         .eq('id_solucion', idSolucion)
         .eq('id_publicacion', idPublicacion)
         .maybeSingle();
@@ -92,7 +92,7 @@ class SolucionesRepository {
 
     await _supabase
         .from('publicaciones')
-        .update({'estado': 'resuelto'})
+        .update({'estado': 'resuelto', 'id_resolutor': solucion['usuario_id']})
         .eq('id_publicacion', idPublicacion);
   }
 
