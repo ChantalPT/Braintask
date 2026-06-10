@@ -1,15 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../logic/providers/perfil_publico_provider.dart';
 
-class PerfilPublicoPage extends ConsumerWidget {
+class PerfilPublicoPage extends ConsumerStatefulWidget {
   final String userId;
 
   const PerfilPublicoPage({Key? key, required this.userId}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final publicProfileAsync = ref.watch(perfilPublicoProvider(userId));
+  ConsumerState<PerfilPublicoPage> createState() => _PerfilPublicoPageState();
+}
+
+class _PerfilPublicoPageState extends ConsumerState<PerfilPublicoPage> {
+  final _supabase = Supabase.instance.client;
+  String _nombreCarrera = 'Cargando...';
+
+  // Creamos la misma logica independiente que usaste en filtro.dart
+  Future<void> _cargarNombreCarrera(int? carreraId) async {
+    if (carreraId == null) {
+      if (mounted) setState(() => _nombreCarrera = 'No especificada');
+      return;
+    }
+
+    try {
+      final data = await _supabase
+          .from('carreras')
+          .select('nombre')
+          .eq('id', carreraId)
+          .single();
+
+      if (mounted) {
+        setState(() {
+          _nombreCarrera = data['nombre'];
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _nombreCarrera = 'Desconocida');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final publicProfileAsync = ref.watch(perfilPublicoProvider(widget.userId));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -28,6 +61,12 @@ class PerfilPublicoPage extends ConsumerWidget {
       ),
       body: publicProfileAsync.when(
         data: (usuario) {
+          // Disparamos la busqueda de la carrera usando el ID del usuario
+          // Solo si aún dice 'Cargando...' para evitar consultas infinitas
+          if (_nombreCarrera == 'Cargando...') {
+            _cargarNombreCarrera(usuario.carreraId);
+          }
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -55,7 +94,7 @@ class PerfilPublicoPage extends ConsumerWidget {
                     const SizedBox(width: 4),
                     Text(
                       usuario.reputacionPromedio > 0
-                          ? usuario.reputacionPromedio.toStringAsFixed(1)
+                          ? '${usuario.reputacionPromedio.toStringAsFixed(1)} / 5.0'
                           : 'Sin calificaciones',
                       style: const TextStyle(
                         fontSize: 16,
@@ -94,7 +133,21 @@ class PerfilPublicoPage extends ConsumerWidget {
                           title: 'Carnet',
                           value: usuario.carnet,
                         ),
-                        // You could add career or other info if needed
+                        const Divider(),
+                        // AQUI MOSTRAMOS LA VARIABLE DE ESTADO
+                        _buildInfoRow(
+                          icon: Icons.school,
+                          title: 'Carrera',
+                          value: _nombreCarrera,
+                        ),
+                        const Divider(),
+                        _buildInfoRow(
+                          icon: Icons.star_rate_rounded,
+                          title: 'Reputación',
+                          value: usuario.reputacionPromedio > 0
+                              ? '${usuario.reputacionPromedio.toStringAsFixed(1)} / 5.0'
+                              : 'Sin estrellas',
+                        ),
                       ],
                     ),
                   ),
@@ -131,8 +184,16 @@ class PerfilPublicoPage extends ConsumerWidget {
             title,
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
-          const Spacer(),
-          Text(value, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
