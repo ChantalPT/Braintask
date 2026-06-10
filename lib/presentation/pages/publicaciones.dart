@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 
@@ -18,7 +17,7 @@ class _PublicarPageState extends State<PublicarPage> {
   final _descripcionController = TextEditingController();
   final _puntosController = TextEditingController();
 
-  File? _archivoSeleccionado;
+  Uint8List? _archivoSeleccionadoBytes;
   String? _nombreArchivo;
   bool _esPdf = false;
 
@@ -73,12 +72,14 @@ class _PublicarPageState extends State<PublicarPage> {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['jpg', 'png', 'pdf', 'jpeg'],
+      withData: true,
     );
 
-    if (result != null) {
+    final archivo = result?.files.single;
+    if (archivo != null && archivo.bytes != null) {
       setState(() {
-        _archivoSeleccionado = File(result.files.single.path!);
-        _nombreArchivo = result.files.single.name;
+        _archivoSeleccionadoBytes = archivo.bytes;
+        _nombreArchivo = archivo.name;
         _esPdf = _nombreArchivo!.toLowerCase().endsWith('.pdf');
       });
     }
@@ -112,16 +113,16 @@ class _PublicarPageState extends State<PublicarPage> {
       return;
     }
 
-    if (_archivoSeleccionado == null) {
+    if (_archivoSeleccionadoBytes == null) {
       _mostrarError("Debes adjuntar un archivo (JPG, PNG o PDF)");
       return;
     }
 
     const int maxSizeMB = 10;
-    final sizeInBytes = _archivoSeleccionado!.lengthSync();
+    final sizeInBytes = _archivoSeleccionadoBytes!.lengthInBytes;
     if (sizeInBytes > maxSizeMB * 1024 * 1024) {
       _mostrarError("El archivo no puede superar los $maxSizeMB MB");
-      setState(() => _archivoSeleccionado = null);
+      setState(() => _archivoSeleccionadoBytes = null);
       return;
     }
 
@@ -138,9 +139,9 @@ class _PublicarPageState extends State<PublicarPage> {
 
       await _supabase.storage
           .from('ejercicios')
-          .upload(
+          .uploadBinary(
             nombreUnico,
-            _archivoSeleccionado!,
+            _archivoSeleccionadoBytes!,
             fileOptions: FileOptions(
               contentType: _esPdf ? 'application/pdf' : 'image/jpeg',
             ),
@@ -182,7 +183,6 @@ class _PublicarPageState extends State<PublicarPage> {
         Navigator.pop(context);
         _mostrarError("Error al subir: $e");
       }
-
     }
   }
 
@@ -328,7 +328,7 @@ class _PublicarPageState extends State<PublicarPage> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Colors.grey[400]!),
                 ),
-                child: _archivoSeleccionado != null
+                child: _archivoSeleccionadoBytes != null
                     ? (_esPdf
                           ? Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -346,8 +346,8 @@ class _PublicarPageState extends State<PublicarPage> {
                             )
                           : ClipRRect(
                               borderRadius: BorderRadius.circular(10),
-                              child: Image.file(
-                                _archivoSeleccionado!,
+                              child: Image.memory(
+                                _archivoSeleccionadoBytes!,
                                 fit: BoxFit.cover,
                               ),
                             ))

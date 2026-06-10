@@ -24,14 +24,12 @@ class _HomePageState extends ConsumerState<HomePage> {
   late final PublicacionesRepository _repository;
   List<Publicacion> _publicaciones = [];
   bool _cargando = true;
-  String _filtroEstado = 'todos'; // 'todos', 'pendiente', 'resuelto'
+  String _filtroEstado = 'todos';
 
   String? _filtroFacultadSeleccionada;
   String? _filtroMateriaSeleccionada;
   String? _filtroTipoSeleccionado;
   String _searchQuery = '';
-
-  Set<int> _idsConSoluciones = {};
 
   @override
   void initState() {
@@ -43,7 +41,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> _cargarPublicaciones() async {
     setState(() => _cargando = true);
     try {
-      // Obtener todas las publicaciones con los filtros (menos estado)
       final data = await _repository.getPublicaciones(
         idMateria: _filtroMateriaSeleccionada,
         idFacultad: _filtroFacultadSeleccionada,
@@ -51,30 +48,12 @@ class _HomePageState extends ConsumerState<HomePage> {
         search: _searchQuery,
       );
 
-      // Cargar promedios de dificultad
       final actualizadas = await Future.wait(
         data.map((p) async {
           final avg = await _repository.getAverageDifficulty(p.id);
           return p.copyWith(promedioDificultad: avg);
         }),
       );
-
-      // Obtener IDs de publicaciones que tienen soluciones
-      if (actualizadas.isNotEmpty) {
-        final idsPublicaciones = actualizadas.map((p) => p.id).toList();
-        final solucionesRespuesta = await Supabase.instance.client
-            .from('soluciones')
-            .select('id_publicacion')
-            .inFilter('id_publicacion', idsPublicaciones);
-
-        final idsConSolucionesTemp = <int>{};
-        for (var item in solucionesRespuesta) {
-          idsConSolucionesTemp.add(item['id_publicacion'] as int);
-        }
-        _idsConSoluciones = idsConSolucionesTemp;
-      } else {
-        _idsConSoluciones = {};
-      }
 
       setState(() {
         _publicaciones = actualizadas;
@@ -89,17 +68,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  bool _tieneSolucion(int idPublicacion) {
-    return _idsConSoluciones.contains(idPublicacion);
-  }
-
   List<Publicacion> get _publicacionesFiltradas {
     if (_filtroEstado == 'todos') {
       return _publicaciones;
     } else if (_filtroEstado == 'pendiente') {
-      return _publicaciones.where((pub) => !_tieneSolucion(pub.id)).toList();
+      return _publicaciones.where((pub) => pub.estado != 'resuelto').toList();
     } else if (_filtroEstado == 'resuelto') {
-      return _publicaciones.where((pub) => _tieneSolucion(pub.id)).toList();
+      return _publicaciones.where((pub) => pub.estado == 'resuelto').toList();
     }
     return _publicaciones;
   }
@@ -188,7 +163,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       _cargarPublicaciones();
                     },
                     decoration: const InputDecoration(
-                      hintText: '¿Qué tema buscas hoy?', // ← Cambiado
+                      hintText: '¿Qué tema buscas hoy?',
                       border: InputBorder.none,
                       hintStyle: TextStyle(color: Colors.grey),
                     ),
@@ -289,7 +264,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                 setState(() {
                   _filtroEstado = opcion['valor']!;
                 });
-                // No es necesario recargar publicaciones
               }
             },
             child: Container(
@@ -357,7 +331,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (descripcionPreview.isEmpty) {
       descripcionPreview = 'Sin descripción';
     }
-    final estaResuelto = _tieneSolucion(pub.id);
+    final estaResuelto = pub.estado == 'resuelto';
     final estadoLabel = estaResuelto ? 'Resuelto' : 'Pendiente';
     final estadoColor = estaResuelto ? const Color(0xFF2E7D32) : Colors.orange;
     final estadoBackground = estaResuelto

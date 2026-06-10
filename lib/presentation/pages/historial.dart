@@ -51,11 +51,38 @@ class _HistorialState extends State<Historial> {
           .eq('aceptada', true)
           .order('created_at', ascending: false);
 
+      final publicacionesResueltas = await _supabase
+          .from('publicaciones')
+          .select('''
+            *,
+            materias!left (nombre_materias)
+          ''')
+          .eq('autor_id', user.id)
+          .inFilter('estado', ['resuelto', 'pagado'])
+          .order('tiempo', ascending: false);
+
+      final ejerciciosResueltos = <Map<String, dynamic>>[];
+      final idsAgregados = <dynamic>{};
+
+      for (final pub in publicacionesResueltas) {
+        final publicacion = Map<String, dynamic>.from(pub);
+        ejerciciosResueltos.add(publicacion);
+        idsAgregados.add(publicacion['id_publicacion']);
+      }
+
+      for (final solucion in soluciones) {
+        final publicacion = Map<String, dynamic>.from(
+          solucion['publicaciones'],
+        );
+        final idPublicacion = publicacion['id_publicacion'];
+        if (idsAgregados.add(idPublicacion)) {
+          ejerciciosResueltos.add(publicacion);
+        }
+      }
+
       setState(() {
         _misPublicaciones = List<Map<String, dynamic>>.from(publicaciones);
-        _ejerciciosResueltos = soluciones
-            .map((s) => s['publicaciones'] as Map<String, dynamic>)
-            .toList();
+        _ejerciciosResueltos = ejerciciosResueltos;
         _cargando = false;
       });
     } catch (e) {
@@ -121,9 +148,17 @@ class _HistorialState extends State<Historial> {
           final materiaNombre =
               pub['materias']?['nombre_materias'] ?? 'Materia desconocida';
           final estado = pub['estado'] ?? 'pendiente';
-          final estadoLabel = estado == 'pendiente' ? 'Pendiente' : 'Resuelto';
+          final estadoLabel = estado == 'pendiente'
+              ? 'Pendiente'
+              : estado == 'pagado'
+                  ? 'Pagado'
+                  : 'Resuelto';
           final icono = tipo == 'pedido'
-              ? (estado == 'pendiente' ? Icons.edit_note : Icons.check_circle)
+              ? (estado == 'pendiente'
+                  ? Icons.edit_note
+                  : estado == 'pagado'
+                      ? Icons.verified
+                      : Icons.check_circle)
               : Icons.assignment_turned_in;
 
           return Card(
@@ -147,7 +182,9 @@ class _HistorialState extends State<Historial> {
                     label: Text(estadoLabel),
                     backgroundColor: estado == 'pendiente'
                         ? Colors.orange[100]
-                        : Colors.green[100],
+                        : estado == 'pagado'
+                            ? Colors.green[200]
+                            : Colors.green[100],
                     visualDensity: VisualDensity.compact,
                   ),
                 ],
