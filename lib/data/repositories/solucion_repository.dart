@@ -23,7 +23,7 @@ class SolucionesRepository {
         .eq('id_publicacion', idPublicacion)
         .single();
 
-    return data['estado'] != 'resuelto';
+    return data['estado'] != 'resuelto' && data['estado'] != 'pagado';
   }
 
   Future<void> aceptarSolucion({
