@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/soluciones.dart'; // ← Importa el archivo real
+import '../models/soluciones.dart';
 
 class SolucionesRepository {
   final SupabaseClient _supabase;
@@ -22,10 +22,10 @@ class SolucionesRepository {
         .select('estado')
         .eq('id_publicacion', idPublicacion)
         .single();
-
     return data['estado'] != 'resuelto' && data['estado'] != 'pagado';
   }
 
+  // Método original (solo marca aceptada, sin puntos)
   Future<void> aceptarSolucion({
     required int idPublicacion,
     required int idSolucion,
@@ -49,7 +49,7 @@ class SolucionesRepository {
 
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) {
-      throw Exception('Debes iniciar sesion para aceptar una solucion.');
+      throw Exception('Debes iniciar sesión para aceptar una solución.');
     }
 
     final publicacion = await _supabase
@@ -59,11 +59,11 @@ class SolucionesRepository {
         .single();
 
     if (publicacion['autor_id'] != userId) {
-      throw Exception('Solo el autor puede aceptar una solucion.');
+      throw Exception('Solo el autor puede aceptar una solución.');
     }
 
     if (publicacion['estado'] == 'resuelto') {
-      throw Exception('Esta publicacion ya fue resuelta.');
+      throw Exception('Esta publicación ya fue resuelta.');
     }
 
     final solucion = await _supabase
@@ -75,7 +75,7 @@ class SolucionesRepository {
 
     if (solucion == null) {
       throw Exception(
-        'La solucion seleccionada no pertenece a esta publicacion.',
+        'La solución seleccionada no pertenece a esta publicación.',
       );
     }
 
@@ -104,7 +104,7 @@ class SolucionesRepository {
   }) async {
     final estaPendiente = await publicacionEstaPendiente(idPublicacion);
     if (!estaPendiente) {
-      throw Exception('Esta publicacion ya fue resuelta.');
+      throw Exception('Esta publicación ya fue resuelta.');
     }
 
     String? archivoUrl;

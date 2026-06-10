@@ -20,6 +20,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   late final SolucionesRepository _solucionesRepository;
   late final PagoRepository _pagoRepository;
   Map<String, dynamic>? _publicacion;
+  Map<String, dynamic>? _autorPublicacion;
   List<Map<String, dynamic>> _soluciones = [];
   bool _cargandoPublicacion = true;
   bool _cargandoSoluciones = true;
@@ -77,6 +78,21 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
 
       setState(() {
         _publicacion = pubData;
+      });
+
+      // Obtener datos del autor
+      if (pubData['autor_id'] != null) {
+        final autorData = await _supabase
+            .from('usuarios')
+            .select('nombre, apellido, puntuacion')
+            .eq('auth_user_id', pubData['autor_id'])
+            .maybeSingle();
+        setState(() {
+          _autorPublicacion = autorData;
+        });
+      }
+
+      setState(() {
         _cargandoPublicacion = false;
       });
 
@@ -95,14 +111,27 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     try {
       final solData = await _supabase
           .from('soluciones')
-          .select('*, usuarios (nombre, apellido)')
+          .select('*, usuarios!soluciones_usuario_id_fkey (nombre, apellido, puntuacion)')
           .eq('id_publicacion', widget.publicacionId)
           .order('fecha_subida', ascending: false);
+
+      print('🔍 Soluciones encontradas: ${solData.length}');
+
+      final List<Map<String, dynamic>> solucionesConUsuario = [];
+      for (var sol in solData) {
+        final usuario = sol['usuarios'] ?? {};
+        solucionesConUsuario.add({
+          ...sol,
+          'usuarios': usuario,
+        });
+      }
+
       setState(() {
-        _soluciones = List<Map<String, dynamic>>.from(solData);
+        _soluciones = solucionesConUsuario;
         _cargandoSoluciones = false;
       });
     } catch (e) {
+      print('❌ Error al recargar soluciones: $e');
       setState(() => _cargandoSoluciones = false);
     }
   }
@@ -161,16 +190,95 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     }
   }
 
-  Future<void> _aceptarSolucion(
+  Future<int?> _mostrarDialogoCalificacion({
+    required String solverNombre,
+    required int puntosBase,
+  }) {
+    int estrellasSeleccionadas = 0;
+    return showDialog<int>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text(
+              'Calificar solución',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Solución de: $solverNombre'),
+                const SizedBox(height: 16),
+                Text(
+                  'Puntos base: $puntosBase pts',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                const Text('Asigna una calificación de 1 a 5 estrellas:'),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    final starValue = index + 1;
+                    return IconButton(
+                      icon: Icon(
+                        starValue <= estrellasSeleccionadas
+                            ? Icons.star
+                            : Icons.star_border,
+                        color: Colors.amber,
+                        size: 40,
+                      ),
+                      onPressed: () {
+                        setStateDialog(() {
+                          estrellasSeleccionadas = starValue;
+                        });
+                      },
+                    );
+                  }),
+                ),
+                const SizedBox(height: 16),
+                if (estrellasSeleccionadas > 0)
+                  Text(
+                    'Puntos a otorgar: ${(puntosBase * estrellasSeleccionadas / 5).round()} pts',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(null),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: estrellasSeleccionadas == 0
+                    ? null
+                    : () => Navigator.of(ctx).pop(estrellasSeleccionadas),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Aceptar y otorgar puntos'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _aceptarSolucionConCalificacion(
     int idSolucion,
     String idSolver,
     String solverNombre,
   ) async {
     if (_currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Debes iniciar sesión para aceptar soluciones'),
-        ),
+        const SnackBar(content: Text('Debes iniciar sesión para aceptar soluciones')),
       );
       return;
     }
@@ -178,9 +286,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     final esAutor = _publicacion?['autor_id'] == _currentUserId;
     if (!esAutor) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Solo el autor puede aceptar una solución'),
-        ),
+        const SnackBar(content: Text('Solo el autor puede aceptar una solución')),
       );
       return;
     }
@@ -194,31 +300,41 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     }
 
     final puntosBase = (_publicacion?['puntuacion'] as int?) ?? 0;
-    final confirmar = await _mostrarDialogoPago(
+
+    final estrellas = await _mostrarDialogoCalificacion(
       solverNombre: solverNombre,
-      monto: puntosBase,
+      puntosBase: puntosBase,
     );
-    if (confirmar != true) return;
+    if (estrellas == null || estrellas < 1 || estrellas > 5) return;
+
+    final puntosOtorgados = (puntosBase * estrellas / 5).round();
 
     setState(() => _procesandoPago = true);
     try {
-      // Aceptar la solución
-      await _solucionesRepository.aceptarSolucion(
-        idPublicacion: widget.publicacionId,
-        idSolucion: idSolucion,
-      );
+      await _supabase
+          .from('soluciones')
+          .update({
+            'aceptada': true,
+            'calificacion': estrellas,
+          })
+          .eq('id_solucion', idSolucion)
+          .eq('id_publicacion', widget.publicacionId);
 
-      // Procesar el pago de la recompensa
-      final pago = await _pagoRepository.procesarPago(
+      await _supabase
+          .from('publicaciones')
+          .update({'estado': 'pagado'})
+          .eq('id_publicacion', widget.publicacionId);
+
+      final pago = await _pagoRepository.otorgarPuntos(
         idPublicacion: widget.publicacionId,
         idReceptor: idSolver,
-        monto: puntosBase,
+        monto: puntosOtorgados,
       );
 
       await _cargarTodo();
 
       if (!mounted) return;
-      _mostrarConfirmacionPago(pago.idPago, puntosBase, solverNombre);
+      _mostrarConfirmacionPago(pago.idPago, puntosOtorgados, solverNombre, estrellas);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -232,119 +348,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     }
   }
 
-  Future<bool?> _mostrarDialogoPago({
-    required String solverNombre,
-    required int monto,
-  }) {
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.payment, color: Colors.green.shade700),
-            const SizedBox(width: 8),
-            const Text(
-              'Confirmar pago',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Al aceptar esta solución se procesará el pago de la recompensa:',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.green.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.monetization_on,
-                        color: Colors.orange,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '$monto puntos',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.person, size: 16, color: Colors.grey),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Para: $solverNombre',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Esta acción no se puede deshacer.',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              'Cancelar',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              'Confirmar pago',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _mostrarConfirmacionPago(int idPago, int monto, String solverNombre) {
+  void _mostrarConfirmacionPago(int idPago, int monto, String solverNombre, int estrellas) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -354,7 +358,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
             Icon(Icons.check_circle, color: Colors.green.shade700, size: 28),
             const SizedBox(width: 8),
             const Text(
-              '¡Pago realizado!',
+              '¡Solución aceptada!',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
@@ -364,7 +368,12 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'La recompensa de $monto pts fue enviada a $solverNombre.',
+              'Calificación: $estrellas ★',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Se han otorgado $monto puntos a $solverNombre.',
               style: const TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 12),
@@ -481,7 +490,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
             .getPublicUrl(pathArchivo);
       }
 
-      await _supabase.from('soluciones').insert({
+      final insertData = {
         'id_publicacion': widget.publicacionId,
         'usuario_id': _currentUserId,
         'cedula_usuario_solver': _cedulaUsuario ?? 'sin_cedula',
@@ -489,7 +498,8 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         'archivo_url': urlArchivoSubido,
         'aceptada': false,
         'fecha_subida': DateTime.now().toIso8601String(),
-      });
+      };
+      await _supabase.from('soluciones').insert(insertData);
 
       _solucionController.clear();
       setState(() {
@@ -499,6 +509,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
 
       await Future.delayed(const Duration(milliseconds: 500));
       await _recargarSoluciones();
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -524,7 +535,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     if (_publicacion == null) return;
     final titulo = _publicacion!['titulo'] ?? 'Sin título';
     final descripcion = _publicacion!['descripcion'] ?? 'Sin descripción';
-    final autorNombre = _publicacion!['autor_nombre'] ?? 'Usuario';
+    final autorNombre = _autorPublicacion != null
+        ? '${_autorPublicacion!['nombre']} ${_autorPublicacion!['apellido']}'
+        : 'Usuario';
     final puntosBase = _publicacion!['puntuacion'] ?? 0;
 
     final preguntaForo = ForoPregunta(
@@ -565,6 +578,13 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     final archivoPubUrl = pub['foto_url'] ?? pub['archivo_url'];
     final estadoPublicacion = pub['estado'] ?? 'pendiente';
 
+    final autorNombre = _autorPublicacion != null
+        ? '${_autorPublicacion!['nombre']} ${_autorPublicacion!['apellido']}'
+        : 'Usuario desconocido';
+    final autorPuntos = _autorPublicacion != null
+        ? _autorPublicacion!['puntuacion'] ?? 0
+        : 0;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -592,9 +612,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    'Recargado: ${_soluciones.length} soluciones',
-                  ),
+                  content: Text('Recargado: ${_soluciones.length} soluciones'),
                 ),
               );
             },
@@ -610,7 +628,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                   const CircularProgressIndicator(),
                   const SizedBox(height: 16),
                   Text(
-                    'Procesando pago...',
+                    'Procesando...',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey.shade700,
@@ -639,12 +657,58 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              titulo,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    titulo,
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                _buildEstadoBadge(estadoPublicacion),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            // Autor y sus puntos
+                            Row(
+                              children: [
+                                const Icon(Icons.person, size: 16, color: Colors.blue),
+                                const SizedBox(width: 5),
+                                Text(
+                                  autorNombre,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.star, size: 12, color: Colors.amber),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        '$autorPuntos pts',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.amber,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 8),
                             Row(
@@ -662,8 +726,6 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                _buildEstadoBadge(estadoPublicacion),
                               ],
                             ),
                             const Divider(height: 24),
@@ -727,21 +789,18 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                         itemCount: _soluciones.length,
                         itemBuilder: (context, index) {
                           final sol = _soluciones[index];
-                          final esAutor =
-                              _publicacion?['autor_id'] == _currentUserId;
+                          final esAutor = _publicacion?['autor_id'] == _currentUserId;
                           final publicacionCerrada =
-                              estadoPublicacion == 'resuelto' ||
-                              estadoPublicacion == 'pagado';
+                              estadoPublicacion == 'resuelto' || estadoPublicacion == 'pagado';
                           final estaAceptada = sol['aceptada'] == true;
-                          final autor = sol['usuarios'] != null
-                              ? '${sol['usuarios']['nombre']} ${sol['usuarios']['apellido']}'
-                              : 'Usuario desconocido';
-                          final idSolver =
-                              sol['usuario_id']?.toString() ?? '';
-                          final calificaciones =
-                              List<Map<String, dynamic>>.from(
-                                sol['calificacion_soluciones'] ?? [],
-                              );
+                          final usuarioSol = sol['usuarios'] ?? {};
+                          final nombreSolver = '${usuarioSol['nombre'] ?? 'Usuario'} ${usuarioSol['apellido'] ?? ''}'.trim();
+                          final puntosSolver = usuarioSol['puntuacion'] ?? 0;
+                          final idSolver = sol['usuario_id']?.toString() ?? '';
+                          final calificacionAutor = sol['calificacion'] as int?;
+                          final calificaciones = List<Map<String, dynamic>>.from(
+                            sol['calificacion_soluciones'] ?? [],
+                          );
                           double promedio = 0.0;
                           int totalVotos = calificaciones.length;
                           if (totalVotos > 0) {
@@ -751,8 +810,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                             );
                             promedio = suma / totalVotos;
                           }
-                          final puntosGanados =
-                              (promedio / 5) * (puntosBase ?? 0);
+                          final puntosGanados = estaAceptada && calificacionAutor != null
+                              ? ((puntosBase * calificacionAutor / 5).round())
+                              : 0;
 
                           return Card(
                             margin: const EdgeInsets.only(bottom: 16),
@@ -760,14 +820,10 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                               side: BorderSide(
-                                color: estaAceptada &&
-                                        estadoPublicacion == 'pagado'
+                                color: estaAceptada && estadoPublicacion == 'pagado'
                                     ? Colors.green.shade300
                                     : Colors.grey.shade300,
-                                width: estaAceptada &&
-                                        estadoPublicacion == 'pagado'
-                                    ? 2
-                                    : 1,
+                                width: estaAceptada && estadoPublicacion == 'pagado' ? 2 : 1,
                               ),
                             ),
                             child: Padding(
@@ -776,57 +832,70 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(
-                                        autor,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.blue,
-                                        ),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.person, size: 16, color: Colors.grey),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            nombreSolver,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.blue,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.amber.shade50,
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(Icons.star, size: 12, color: Colors.amber),
+                                                const SizedBox(width: 2),
+                                                Text(
+                                                  '$puntosSolver pts',
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.amber,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      _buildSolucionBadge(
-                                        estaAceptada,
-                                        estadoPublicacion,
-                                      ),
+                                      _buildSolucionBadge(estaAceptada, estadoPublicacion),
                                     ],
                                   ),
                                   const SizedBox(height: 10),
-                                  // Botón aceptar: solo visible si es el autor,
-                                  // la publicación está pendiente y la solución no está aceptada
-                                  if (esAutor &&
-                                      !publicacionCerrada &&
-                                      !estaAceptada)
+                                  if (esAutor && !publicacionCerrada && !estaAceptada)
                                     Padding(
-                                      padding: const EdgeInsets.only(
-                                        bottom: 12,
-                                      ),
+                                      padding: const EdgeInsets.only(bottom: 12),
                                       child: ElevatedButton.icon(
-                                        onPressed: () => _aceptarSolucion(
+                                        onPressed: () => _aceptarSolucionConCalificacion(
                                           sol['id_solucion'],
                                           idSolver,
-                                          autor,
+                                          nombreSolver,
                                         ),
-                                        icon: const Icon(Icons.payment),
+                                        icon: const Icon(Icons.star),
                                         label: const Text(
-                                          'ACEPTAR Y PAGAR RECOMPENSA',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                          'CALIFICAR Y ACEPTAR SOLUCIÓN',
+                                          style: TextStyle(fontWeight: FontWeight.bold),
                                         ),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green,
-                                          foregroundColor: Colors.white,
-                                          minimumSize: const Size(
-                                            double.infinity,
-                                            44,
-                                          ),
+                                          backgroundColor: Colors.amber,
+                                          foregroundColor: Colors.black,
+                                          minimumSize: const Size(double.infinity, 44),
                                         ),
                                       ),
                                     ),
-                                  if ((sol['comentario_solucion'] ?? '')
-                                      .isNotEmpty)
+                                  if ((sol['comentario_solucion'] ?? '').isNotEmpty)
                                     Text(
                                       sol['comentario_solucion'],
                                       style: const TextStyle(fontSize: 14),
@@ -836,33 +905,43 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                                     _buildArchivoGrande(sol['archivo_url']),
                                   ],
                                   const Divider(height: 24),
+                                  if (estaAceptada && calificacionAutor != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.star, color: Colors.amber, size: 18),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Calificación del autor: $calificacionAutor ★',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.amber,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         totalVotos == 0
                                             ? 'Sin votos'
                                             : '${promedio.toStringAsFixed(1)} ★ ($totalVotos)',
-                                        style: const TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 13,
-                                        ),
+                                        style: const TextStyle(color: Colors.grey, fontSize: 13),
                                       ),
                                       Row(
                                         children: List.generate(5, (index) {
                                           final starValue = index + 1;
-                                          final isFilled =
-                                              starValue <= promedio.round();
+                                          final isFilled = starValue <= promedio.round();
                                           return InkWell(
                                             onTap: () => _calificarSolucion(
                                               sol['id_solucion'],
                                               starValue,
                                             ),
                                             child: Icon(
-                                              isFilled
-                                                  ? Icons.star
-                                                  : Icons.star_border,
+                                              isFilled ? Icons.star : Icons.star_border,
                                               color: Colors.amber,
                                               size: 24,
                                             ),
@@ -871,15 +950,18 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Puntos ganados por el autor: ${puntosGanados.toStringAsFixed(0)} pts',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.green.shade700,
+                                  if (puntosGanados > 0)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Text(
+                                        'Puntos otorgados al solver: $puntosGanados pts',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.green.shade700,
+                                        ),
+                                      ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),
@@ -996,12 +1078,8 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
           child: Row(
             children: [
               Icon(
-                estado == 'pagado'
-                    ? Icons.verified
-                    : Icons.check_circle,
-                color: estado == 'pagado'
-                    ? Colors.green.shade700
-                    : Colors.blue.shade700,
+                estado == 'pagado' ? Icons.verified : Icons.check_circle,
+                color: estado == 'pagado' ? Colors.green.shade700 : Colors.blue.shade700,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1055,9 +1133,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               width: double.infinity,
               height: 48,
               child: OutlinedButton.icon(
-                onPressed: _enviandoSolucion || esMiPropioEjercicio
-                    ? null
-                    : _seleccionarArchivoSolucion,
+                onPressed: _enviandoSolucion || esMiPropioEjercicio ? null : _seleccionarArchivoSolucion,
                 icon: const Icon(Icons.add_photo_alternate, size: 22),
                 label: const Text(
                   'SELECCIONAR FOTO / PDF DE TU SOLUCIÓN',
@@ -1093,9 +1169,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: _enviandoSolucion || esMiPropioEjercicio
-                    ? null
-                    : _subirYEnviarSolucion,
+                onPressed: _enviandoSolucion || esMiPropioEjercicio ? null : _subirYEnviarSolucion,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF007BFF),
                 ),

@@ -6,24 +6,24 @@ class PagoRepository {
 
   PagoRepository(this._supabase);
 
-  /// Procesa el pago de la recompensa al confirmar una solución aceptada.
-  /// Debita al pagador, acredita al receptor y registra la transacción.
-  Future<PagoModel> procesarPago({
+  /// Otorga puntos al solver (sin debitar al autor)
+  /// Registra la transacción y actualiza la puntuación del usuario.
+  Future<PagoModel> otorgarPuntos({
     required int idPublicacion,
     required String idReceptor,
     required int monto,
   }) async {
     final idPagador = _supabase.auth.currentUser?.id;
     if (idPagador == null) {
-      throw Exception('Debes iniciar sesión para procesar el pago.');
+      throw Exception('Debes iniciar sesión para otorgar puntos.');
     }
 
-    // 1. Registrar la transacción en la tabla pagos
+    // 1. Registrar la transacción en la tabla pagos (sin debitar, solo acreditación)
     final pagoData = await _supabase
         .from('pagos')
         .insert({
           'id_publicacion': idPublicacion,
-          'id_pagador': idPagador,
+          'id_pagador': idPagador, // quien otorga (el autor)
           'id_receptor': idReceptor,
           'monto': monto,
           'fecha': DateTime.now().toIso8601String(),
@@ -32,20 +32,7 @@ class PagoRepository {
         .select()
         .single();
 
-    // 2. Debitar puntuacion del pagador (estudiante)
-    final pagadorData = await _supabase
-        .from('usuarios')
-        .select('puntuacion')
-        .eq('auth_user_id', idPagador)
-        .single();
-    final nuevoPuntuacionPagador =
-        ((pagadorData['puntuacion'] as int? ?? 0) - monto).clamp(0, 999999);
-    await _supabase
-        .from('usuarios')
-        .update({'puntuacion': nuevoPuntuacionPagador})
-        .eq('auth_user_id', idPagador);
-
-    // 3. Acreditar puntuacion al receptor (quien resolvió)
+    // 2. Acreditar puntuacion al receptor (quien resolvió)
     final receptorData = await _supabase
         .from('usuarios')
         .select('puntuacion')
@@ -58,13 +45,23 @@ class PagoRepository {
         .update({'puntuacion': nuevoPuntuacionReceptor})
         .eq('auth_user_id', idReceptor);
 
-    // 4. Marcar publicación como 'pagado'
-    await _supabase
-        .from('publicaciones')
-        .update({'estado': 'pagado'})
-        .eq('id_publicacion', idPublicacion);
+    // NOTA: No debitar al pagador (autor)
 
     return PagoModel.fromJson(pagoData);
+  }
+
+  // Método original (ya no se usa, pero lo dejamos por compatibilidad)
+  Future<PagoModel> procesarPago({
+    required int idPublicacion,
+    required String idReceptor,
+    required int monto,
+  }) async {
+    // Redirigimos al nuevo método
+    return otorgarPuntos(
+      idPublicacion: idPublicacion,
+      idReceptor: idReceptor,
+      monto: monto,
+    );
   }
 
   Future<PagoModel?> getPagoPorPublicacion(int idPublicacion) async {

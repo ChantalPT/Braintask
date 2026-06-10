@@ -41,9 +41,7 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
     try {
       final data = await Supabase.instance.client
           .from('carreras')
-          .select(
-            'id, nombre',
-          ) // Verifica si en BD es id/nombre o id_carrera/nombre_carrera
+          .select('id, nombre')
           .order('nombre');
       if (mounted) setState(() => _carreras = data);
     } catch (e) {
@@ -151,6 +149,40 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Mostrar puntos acumulados
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.amber.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 30),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Puntos acumulados',
+                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                              ),
+                              Text(
+                                '${usuario.puntuacion} pts',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
                     const Text(
                       'Información personal',
                       style: TextStyle(

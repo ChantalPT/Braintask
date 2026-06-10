@@ -12,8 +12,6 @@ import 'help_support_page.dart';
 import 'pantalla_carga.dart';
 import 'perfil_page.dart';
 import '../../logic/providers/usuario_provider.dart';
-import 'detalle_foro_pregunta.dart'; // ← Para navegar al foro
-import '../../data/models/foro_pregunta.dart'; // ← Para crear la pregunta del foro
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -27,7 +25,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   late final PublicacionesRepository _repository;
   List<Publicacion> _publicaciones = [];
   bool _cargando = true;
-  String _filtroEstado = 'todos'; // 'todos', 'pendiente', 'resuelto'
+  String _filtroEstado = 'todos';
 
   String? _filtroFacultadSeleccionada;
   String? _filtroMateriaSeleccionada;
@@ -44,7 +42,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> _cargarPublicaciones() async {
     setState(() => _cargando = true);
     try {
-      // Obtener todas las publicaciones con los filtros (menos estado)
       final data = await _repository.getPublicaciones(
         idMateria: _filtroMateriaSeleccionada,
         idFacultad: _filtroFacultadSeleccionada,
@@ -52,7 +49,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         search: _searchQuery,
       );
 
-      // Cargar promedios de dificultad
       final actualizadas = await Future.wait(
         data.map((p) async {
           final avg = await _repository.getAverageDifficulty(p.id);
@@ -168,7 +164,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       _cargarPublicaciones();
                     },
                     decoration: const InputDecoration(
-                      hintText: '¿Qué tema buscas hoy?', // ← Cambiado
+                      hintText: '¿Qué tema buscas hoy?',
                       border: InputBorder.none,
                       hintStyle: TextStyle(color: Colors.grey),
                     ),
@@ -269,7 +265,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                 setState(() {
                   _filtroEstado = opcion['valor']!;
                 });
-                // No es necesario recargar publicaciones
               }
             },
             child: Container(
@@ -322,8 +317,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            DetallePublicacionPage(publicacionId: publicacionId),
+        builder: (context) => DetallePublicacionPage(publicacionId: publicacionId),
       ),
     );
     _cargarPublicaciones();
@@ -446,10 +440,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    pub.promedioDificultad?.toStringAsFixed(
-                                          1,
-                                        ) ??
-                                        '--',
+                                    pub.promedioDificultad?.toStringAsFixed(1) ?? '--',
                                     style: const TextStyle(fontSize: 11),
                                   ),
                                 ],
@@ -458,75 +449,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              height: 28,
-                              child: ElevatedButton(
-                                onPressed: () =>
-                                    _abrirDetallePublicacion(pub.id),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF007BFF),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  textStyle: const TextStyle(fontSize: 11),
-                                ),
-                                child: Text(
-                                  estaResuelto ? 'Ver respuesta' : 'Resolver',
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            SizedBox(
-                              height: 28,
-                              child: OutlinedButton(
-                                onPressed: () {
-                                  // Crear la pregunta del foro con los datos de la publicación
-                                  final preguntaForo = ForoPregunta(
-                                    id: pub.id,
-                                    titulo: pub.titulo,
-                                    descripcion: pub.descripcion ?? '',
-                                    autorNombre:
-                                        'Usuario', // Se puede mejorar si se obtiene el autor real
-                                    votos: 0,
-                                    puntosBase: pub.puntuacion,
-                                    respuestasCount: 0,
-                                    tiempo: pub.tiempo,
-                                  );
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          DetalleForoPreguntaPage(
-                                            pregunta: preguntaForo,
-                                          ),
-                                    ),
-                                  );
-                                },
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF007BFF),
-                                  side: const BorderSide(
-                                    color: Color(0xFF007BFF),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  textStyle: const TextStyle(fontSize: 11),
-                                ),
-                                child: const Text('Foro'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
                     ),
                   ],
                 ),
