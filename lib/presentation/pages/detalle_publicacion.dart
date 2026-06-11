@@ -14,10 +14,12 @@ class DetallePublicacionPage extends ConsumerStatefulWidget {
   const DetallePublicacionPage({super.key, required this.publicacionId});
 
   @override
-  ConsumerState<DetallePublicacionPage> createState() => _DetallePublicacionPageState();
+  ConsumerState<DetallePublicacionPage> createState() =>
+      _DetallePublicacionPageState();
 }
 
-class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage> {
+class _DetallePublicacionPageState
+    extends ConsumerState<DetallePublicacionPage> {
   final _supabase = Supabase.instance.client;
   late final SolucionesRepository _solucionesRepository;
   late final PagoRepository _pagoRepository;
@@ -110,21 +112,11 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
   Future<void> _recargarSoluciones() async {
     setState(() => _cargandoSoluciones = true);
     try {
-      final solData = await _supabase
-          .from('soluciones')
-          .select('''
-            *,
-            usuarios!soluciones_usuario_id_fkey (
-              nombre,
-              apellido,
-              puntuacion,
-              auth_user_id
-            )
-          ''')
-          .eq('id_publicacion', widget.publicacionId)
-          .order('fecha_subida', ascending: false);
+      final solData = await _solucionesRepository
+          .getSolucionesVistaPorPublicacion(widget.publicacionId);
+      debugPrint("📦 Se obtuvieron ${solData.length} soluciones.");
       setState(() {
-        _soluciones = List<Map<String, dynamic>>.from(solData);
+        _soluciones = solData;
         _cargandoSoluciones = false;
       });
     } catch (e) {
@@ -198,7 +190,9 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
       builder: (ctx) => StatefulBuilder(
         builder: (context, setStateDialog) {
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: const Text(
               'Calificar solución',
               style: TextStyle(fontWeight: FontWeight.bold),
@@ -274,7 +268,9 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
   ) async {
     if (_currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Debes iniciar sesión para aceptar soluciones')),
+        const SnackBar(
+          content: Text('Debes iniciar sesión para aceptar soluciones'),
+        ),
       );
       return;
     }
@@ -282,7 +278,9 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
     final esAutor = _publicacion?['autor_id'] == _currentUserId;
     if (!esAutor) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Solo el autor puede aceptar una solución')),
+        const SnackBar(
+          content: Text('Solo el autor puede aceptar una solución'),
+        ),
       );
       return;
     }
@@ -299,11 +297,15 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
 
     final usuarioData = solucion['usuarios'];
     final idSolver = usuarioData?['auth_user_id'] as String?;
-    final solverNombre = '${usuarioData?['nombre'] ?? ''} ${usuarioData?['apellido'] ?? ''}'.trim();
+    final solverNombre =
+        '${usuarioData?['nombre'] ?? ''} ${usuarioData?['apellido'] ?? ''}'
+            .trim();
 
     if (idSolver == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: No se encontró el auth_user_id del solver')),
+        const SnackBar(
+          content: Text('Error: No se encontró el auth_user_id del solver'),
+        ),
       );
       return;
     }
@@ -320,10 +322,7 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
     try {
       await _supabase
           .from('soluciones')
-          .update({
-            'aceptada': true,
-            'calificacion': estrellas,
-          })
+          .update({'aceptada': true, 'calificacion': estrellas})
           .eq('id_solucion', idSolucion)
           .eq('id_publicacion', widget.publicacionId);
 
@@ -355,7 +354,12 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
       await _cargarTodo();
 
       if (!mounted) return;
-      _mostrarConfirmacionPago(pago.idPago, puntosOtorgados, solverNombre, estrellas);
+      _mostrarConfirmacionPago(
+        pago.idPago,
+        puntosOtorgados,
+        solverNombre,
+        estrellas,
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -369,7 +373,12 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
     }
   }
 
-  void _mostrarConfirmacionPago(int idPago, int monto, String solverNombre, int estrellas) {
+  void _mostrarConfirmacionPago(
+    int idPago,
+    int monto,
+    String solverNombre,
+    int estrellas,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -511,21 +520,20 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
             .getPublicUrl(pathArchivo);
       }
 
-      final insertData = {
-        'id_publicacion': widget.publicacionId,
-        'usuario_id': _currentUserId,
-        'cedula_usuario_solver': _cedulaUsuario ?? 'sin_cedula',
-        'comentario_solucion': _solucionController.text.trim(),
-        'archivo_url': urlArchivoSubido,
-        'aceptada': false,
-        'fecha_subida': DateTime.now().toIso8601String(),
-      };
-      await _supabase.from('soluciones').insert(insertData);
+      final solucionGuardada = await _solucionesRepository
+          .subirSolucionDesdeApp(
+            idPublicacion: widget.publicacionId,
+            comentario: _solucionController.text.trim(),
+            archivoUrl: urlArchivoSubido,
+          );
+
+      debugPrint("✅ Solución insertada correctamente.");
 
       _solucionController.clear();
       setState(() {
         _archivoSolucionBytes = null;
         _nombreArchivoSolucion = null;
+        _soluciones = [solucionGuardada, ..._soluciones];
       });
 
       await Future.delayed(const Duration(milliseconds: 500));
@@ -600,7 +608,9 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
     final autorNombre = _autorPublicacion != null
         ? '${_autorPublicacion!['nombre']} ${_autorPublicacion!['apellido']}'
         : 'Usuario desconocido';
-    final autorPuntos = _autorPublicacion != null ? _autorPublicacion!['puntuacion'] ?? 0 : 0;
+    final autorPuntos = _autorPublicacion != null
+        ? _autorPublicacion!['puntuacion'] ?? 0
+        : 0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -686,7 +696,11 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                const Icon(Icons.person, size: 16, color: Colors.blue),
+                                const Icon(
+                                  Icons.person,
+                                  size: 16,
+                                  color: Colors.blue,
+                                ),
                                 const SizedBox(width: 5),
                                 Text(
                                   autorNombre,
@@ -697,7 +711,10 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                                 ),
                                 const SizedBox(width: 10),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.amber.shade50,
                                     borderRadius: BorderRadius.circular(12),
@@ -705,7 +722,11 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(Icons.star, size: 12, color: Colors.amber),
+                                      const Icon(
+                                        Icons.star,
+                                        size: 12,
+                                        color: Colors.amber,
+                                      ),
                                       const SizedBox(width: 2),
                                       Text(
                                         '$autorPuntos pts',
@@ -723,7 +744,11 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                const Icon(Icons.monetization_on, color: Colors.orange, size: 18),
+                                const Icon(
+                                  Icons.monetization_on,
+                                  color: Colors.orange,
+                                  size: 18,
+                                ),
                                 const SizedBox(width: 5),
                                 Text(
                                   '$puntosBase pts base',
@@ -737,10 +762,16 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                             const Divider(height: 24),
                             const Text(
                               'Enunciado:',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
                             ),
                             const SizedBox(height: 6),
-                            Text(descripcion, style: const TextStyle(fontSize: 15)),
+                            Text(
+                              descripcion,
+                              style: const TextStyle(fontSize: 15),
+                            ),
                             if (archivoPubUrl != null) ...[
                               const SizedBox(height: 12),
                               _buildArchivoGrande(archivoPubUrl),
@@ -756,7 +787,10 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                       children: [
                         Text(
                           'Soluciones Propuestas (${_soluciones.length})',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         if (_cargandoSoluciones)
                           const SizedBox(
@@ -786,16 +820,22 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                         itemCount: _soluciones.length,
                         itemBuilder: (context, index) {
                           final sol = _soluciones[index];
-                          final esAutor = _publicacion?['autor_id'] == _currentUserId;
-                          final publicacionCerrada = estadoPublicacion == 'resuelto' || estadoPublicacion == 'pagado';
+                          final esAutor =
+                              _publicacion?['autor_id'] == _currentUserId;
+                          final publicacionCerrada =
+                              estadoPublicacion == 'resuelto' ||
+                              estadoPublicacion == 'pagado';
                           final estaAceptada = sol['aceptada'] == true;
                           final usuarioSol = sol['usuarios'] ?? {};
-                          final nombreSolver = '${usuarioSol['nombre'] ?? 'Usuario'} ${usuarioSol['apellido'] ?? ''}'.trim();
+                          final nombreSolver =
+                              '${usuarioSol['nombre'] ?? 'Usuario'} ${usuarioSol['apellido'] ?? ''}'
+                                  .trim();
                           final puntosSolver = usuarioSol['puntuacion'] ?? 0;
                           final calificacionAutor = sol['calificacion'] as int?;
-                          final calificaciones = List<Map<String, dynamic>>.from(
-                            sol['calificacion_soluciones'] ?? [],
-                          );
+                          final calificaciones =
+                              List<Map<String, dynamic>>.from(
+                                sol['calificacion_soluciones'] ?? [],
+                              );
                           double promedio = 0.0;
                           int totalVotos = calificaciones.length;
                           if (totalVotos > 0) {
@@ -805,7 +845,8 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                             );
                             promedio = suma / totalVotos;
                           }
-                          final puntosGanados = estaAceptada && calificacionAutor != null
+                          final puntosGanados =
+                              estaAceptada && calificacionAutor != null
                               ? ((puntosBase * calificacionAutor / 5).round())
                               : 0;
 
@@ -815,10 +856,16 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                               side: BorderSide(
-                                color: estaAceptada && estadoPublicacion == 'pagado'
+                                color:
+                                    estaAceptada &&
+                                        estadoPublicacion == 'pagado'
                                     ? Colors.green.shade300
                                     : Colors.grey.shade300,
-                                width: estaAceptada && estadoPublicacion == 'pagado' ? 2 : 1,
+                                width:
+                                    estaAceptada &&
+                                        estadoPublicacion == 'pagado'
+                                    ? 2
+                                    : 1,
                               ),
                             ),
                             child: Padding(
@@ -827,27 +874,43 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Row(
                                         children: [
-                                          const Icon(Icons.person, size: 16, color: Colors.grey),
+                                          const Icon(
+                                            Icons.person,
+                                            size: 16,
+                                            color: Colors.grey,
+                                          ),
                                           const SizedBox(width: 4),
                                           Text(
                                             nombreSolver,
-                                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.blue,
+                                            ),
                                           ),
                                           const SizedBox(width: 8),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
                                             decoration: BoxDecoration(
                                               color: Colors.amber.shade50,
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                const Icon(Icons.star, size: 12, color: Colors.amber),
+                                                const Icon(
+                                                  Icons.star,
+                                                  size: 12,
+                                                  color: Colors.amber,
+                                                ),
                                                 const SizedBox(width: 2),
                                                 Text(
                                                   '$puntosSolver pts',
@@ -862,33 +925,51 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                                           ),
                                         ],
                                       ),
-                                      _buildSolucionBadge(estaAceptada, estadoPublicacion),
+                                      _buildSolucionBadge(
+                                        estaAceptada,
+                                        estadoPublicacion,
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 10),
-                                  if (esAutor && !publicacionCerrada && !estaAceptada)
+                                  if (esAutor &&
+                                      !publicacionCerrada &&
+                                      !estaAceptada)
                                     Padding(
-                                      padding: const EdgeInsets.only(bottom: 12),
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ),
                                       child: ElevatedButton.icon(
-                                        onPressed: () => _aceptarSolucionConCalificacion(
-                                          sol['id_solucion'],
-                                          sol,
-                                        ),
+                                        onPressed: () =>
+                                            _aceptarSolucionConCalificacion(
+                                              sol['id_solucion'],
+                                              sol,
+                                            ),
                                         icon: const Icon(Icons.star),
                                         label: const Text(
                                           'CALIFICAR Y ACEPTAR SOLUCIÓN',
-                                          style: TextStyle(fontWeight: FontWeight.bold),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.amber,
                                           foregroundColor: Colors.black,
-                                          minimumSize: const Size(double.infinity, 44),
+                                          minimumSize: const Size(
+                                            double.infinity,
+                                            44,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  if ((sol['comentario_solucion'] ?? '').isNotEmpty)
-                                    Text(sol['comentario_solucion'], style: const TextStyle(fontSize: 14)),
-                                  if ((sol['archivo_url'] ?? '').isNotEmpty) ...[
+                                  if ((sol['comentario_solucion'] ?? '')
+                                      .isNotEmpty)
+                                    Text(
+                                      sol['comentario_solucion'],
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  if ((sol['archivo_url'] ?? '')
+                                      .isNotEmpty) ...[
                                     const SizedBox(height: 10),
                                     _buildArchivoGrande(sol['archivo_url']),
                                   ],
@@ -898,35 +979,49 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                                       padding: const EdgeInsets.only(bottom: 8),
                                       child: Row(
                                         children: [
-                                          const Icon(Icons.star, color: Colors.amber, size: 18),
+                                          const Icon(
+                                            Icons.star,
+                                            color: Colors.amber,
+                                            size: 18,
+                                          ),
                                           const SizedBox(width: 4),
                                           Text(
                                             'Calificación del autor: $calificacionAutor ★',
-                                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.amber),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.amber,
+                                            ),
                                           ),
                                         ],
                                       ),
                                     ),
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         totalVotos == 0
                                             ? 'Sin votos'
                                             : '${promedio.toStringAsFixed(1)} ★ ($totalVotos)',
-                                        style: const TextStyle(color: Colors.grey, fontSize: 13),
+                                        style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 13,
+                                        ),
                                       ),
                                       Row(
                                         children: List.generate(5, (index) {
                                           final starValue = index + 1;
-                                          final isFilled = starValue <= promedio.round();
+                                          final isFilled =
+                                              starValue <= promedio.round();
                                           return InkWell(
                                             onTap: () => _calificarSolucion(
                                               sol['id_solucion'],
                                               starValue,
                                             ),
                                             child: Icon(
-                                              isFilled ? Icons.star : Icons.star_border,
+                                              isFilled
+                                                  ? Icons.star
+                                                  : Icons.star_border,
                                               color: Colors.amber,
                                               size: 24,
                                             ),
@@ -1064,7 +1159,9 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
             children: [
               Icon(
                 estado == 'pagado' ? Icons.verified : Icons.check_circle,
-                color: estado == 'pagado' ? Colors.green.shade700 : Colors.blue.shade700,
+                color: estado == 'pagado'
+                    ? Colors.green.shade700
+                    : Colors.blue.shade700,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1106,7 +1203,10 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
                 ),
                 child: const Text(
                   'No puedes responder a tu propia pregunta.',
-                  style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: Colors.deepOrange,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -1115,7 +1215,9 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
               width: double.infinity,
               height: 48,
               child: OutlinedButton.icon(
-                onPressed: _enviandoSolucion || esMiPropioEjercicio ? null : _seleccionarArchivoSolucion,
+                onPressed: _enviandoSolucion || esMiPropioEjercicio
+                    ? null
+                    : _seleccionarArchivoSolucion,
                 icon: const Icon(Icons.add_photo_alternate, size: 22),
                 label: const Text(
                   'SELECCIONAR FOTO / PDF DE TU SOLUCIÓN',
@@ -1127,7 +1229,11 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
             if (_nombreArchivoSolucion != null) ...[
               Text(
                 'Adjunto: $_nombreArchivoSolucion',
-                style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12),
+                style: const TextStyle(
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
               ),
               const SizedBox(height: 12),
             ],
@@ -1137,7 +1243,9 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
               enabled: !_enviandoSolucion && !esMiPropioEjercicio,
               decoration: InputDecoration(
                 hintText: 'Explica tu resolución...',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -1145,13 +1253,20 @@ class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage>
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: _enviandoSolucion || esMiPropioEjercicio ? null : _subirYEnviarSolucion,
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF007BFF)),
+                onPressed: _enviandoSolucion || esMiPropioEjercicio
+                    ? null
+                    : _subirYEnviarSolucion,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF007BFF),
+                ),
                 child: _enviandoSolucion
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
                         'ENVIAR SOLUCIÓN',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
               ),
             ),

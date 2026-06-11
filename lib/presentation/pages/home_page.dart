@@ -25,7 +25,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   late final PublicacionesRepository _repository;
   List<Publicacion> _publicaciones = [];
   bool _cargando = true;
-  String _filtroEstado = 'todos';
+  String _filtroEstado = 'todos'; // 'todos', 'pendiente', 'resuelto'
+  RealtimeChannel? _publicacionesChannel;
+  RealtimeChannel? _solucionesChannel;
+  final Set<int> _solucionesAceptadasNotificadas = {};
+  final Set<int> _publicacionesResueltasNotificadas = {};
 
   String? _filtroFacultadSeleccionada;
   String? _filtroMateriaSeleccionada;
@@ -37,6 +41,99 @@ class _HomePageState extends ConsumerState<HomePage> {
     super.initState();
     _repository = PublicacionesRepository(Supabase.instance.client);
     _cargarPublicaciones();
+    _suscribirCambiosEnTiempoReal();
+  }
+
+  @override
+  void dispose() {
+    final supabase = Supabase.instance.client;
+    final publicacionesChannel = _publicacionesChannel;
+    final solucionesChannel = _solucionesChannel;
+    if (publicacionesChannel != null) {
+      supabase.removeChannel(publicacionesChannel);
+    }
+    if (solucionesChannel != null) {
+      supabase.removeChannel(solucionesChannel);
+    }
+    super.dispose();
+  }
+
+  void _suscribirCambiosEnTiempoReal() {
+    final supabase = Supabase.instance.client;
+    final userId = supabase.auth.currentUser?.id;
+
+    _publicacionesChannel = supabase
+        .channel('public:publicaciones:home')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'publicaciones',
+          callback: (payload) {
+            if (!mounted) return;
+
+            final publicacion = payload.newRecord;
+            final idPublicacion = publicacion['id_publicacion'];
+            final nuevoEstado = publicacion['estado'];
+            final estabaPendiente =
+                idPublicacion is int &&
+                _publicaciones.any(
+                  (pub) => pub.id == idPublicacion && !pub.estaResuelta,
+                );
+            final ahoraEstaResuelta = _estadoEsResuelto(nuevoEstado);
+
+            _cargarPublicaciones();
+
+            if (idPublicacion is! int ||
+                !estabaPendiente ||
+                !ahoraEstaResuelta ||
+                !_publicacionesResueltasNotificadas.add(idPublicacion)) {
+              return;
+            }
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Un ejercicio fue marcado como resuelto.'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          },
+        )
+        .subscribe();
+
+    if (userId == null) return;
+
+    _solucionesChannel = supabase
+        .channel('public:soluciones:home:$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'soluciones',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'usuario_id',
+            value: userId,
+          ),
+          callback: (payload) {
+            final solucion = payload.newRecord;
+            final idSolucion = solucion['id_solucion'];
+            final fueAceptada = solucion['aceptada'] == true;
+            if (!mounted || !fueAceptada || idSolucion is! int) return;
+            if (!_solucionesAceptadasNotificadas.add(idSolucion)) return;
+
+            _cargarPublicaciones();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Tu solucion fue aceptada. Ejercicio resuelto.'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          },
+        )
+        .subscribe();
+  }
+
+  bool _estadoEsResuelto(dynamic estado) {
+    return estado == 'resuelto' || estado == 'pagado';
   }
 
   Future<void> _cargarPublicaciones() async {
@@ -73,9 +170,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (_filtroEstado == 'todos') {
       return _publicaciones;
     } else if (_filtroEstado == 'pendiente') {
-      return _publicaciones.where((pub) => pub.estado != 'resuelto').toList();
+      return _publicaciones.where((pub) => !pub.estaResuelta).toList();
     } else if (_filtroEstado == 'resuelto') {
-      return _publicaciones.where((pub) => pub.estado == 'resuelto').toList();
+      return _publicaciones.where((pub) => pub.estaResuelta).toList();
     }
     return _publicaciones;
   }
@@ -317,7 +414,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DetallePublicacionPage(publicacionId: publicacionId),
+        builder: (context) =>
+            DetallePublicacionPage(publicacionId: publicacionId),
       ),
     );
     _cargarPublicaciones();
@@ -331,7 +429,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (descripcionPreview.isEmpty) {
       descripcionPreview = 'Sin descripción';
     }
-    final estaResuelto = pub.estado == 'resuelto';
+    final estaResuelto = pub.estaResuelta;
     final estadoLabel = estaResuelto ? 'Resuelto' : 'Pendiente';
     final estadoColor = estaResuelto ? const Color(0xFF2E7D32) : Colors.orange;
     final estadoBackground = estaResuelto
@@ -440,7 +538,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    pub.promedioDificultad?.toStringAsFixed(1) ?? '--',
+                                    pub.promedioDificultad?.toStringAsFixed(
+                                          1,
+                                        ) ??
+                                        '--',
                                     style: const TextStyle(fontSize: 11),
                                   ),
                                 ],
