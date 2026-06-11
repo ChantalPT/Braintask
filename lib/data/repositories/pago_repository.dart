@@ -12,27 +12,36 @@ class PagoRepository {
     required int idPublicacion,
     required String idReceptor,
     required int monto,
+    required int idSolucion,
   }) async {
     final idPagador = _supabase.auth.currentUser?.id;
     if (idPagador == null) {
       throw Exception('Debes iniciar sesión para otorgar puntos.');
     }
+    if (idReceptor.isEmpty) {
+      throw Exception('El id del receptor no puede estar vacío');
+    }
 
     // 1. Registrar la transacción en la tabla pagos (sin debitar, solo acreditación)
+    final Map<String, dynamic> datosPago = {
+      'id_publicacion': idPublicacion,
+      'usuario_pagador_id': idPagador,
+      'usuario_receptor_id': idReceptor,
+      'monto': monto,
+      'estado': 'completado',
+    };
+    if (idSolucion != null) {
+      datosPago['id_solucion'] = idSolucion;
+    }
+    // No enviamos 'fecha_pago' ni 'created_at' para que la BD use el valor por defecto (now())
+
     final pagoData = await _supabase
         .from('pagos')
-        .insert({
-          'id_publicacion': idPublicacion,
-          'id_pagador': idPagador, // quien otorga (el autor)
-          'id_receptor': idReceptor,
-          'monto': monto,
-          'fecha': DateTime.now().toIso8601String(),
-          'estado': 'completado',
-        })
+        .insert(datosPago)
         .select()
         .single();
 
-    // 2. Acreditar puntuacion al receptor (quien resolvió)
+    // Acreditar puntos al receptor
     final receptorData = await _supabase
         .from('usuarios')
         .select('puntuacion')
@@ -45,22 +54,21 @@ class PagoRepository {
         .update({'puntuacion': nuevoPuntuacionReceptor})
         .eq('auth_user_id', idReceptor);
 
-    // NOTA: No debitar al pagador (autor)
-
     return PagoModel.fromJson(pagoData);
   }
 
-  // Método original (ya no se usa, pero lo dejamos por compatibilidad)
+  // Método de compatibilidad (si se usa en algún lado)
   Future<PagoModel> procesarPago({
     required int idPublicacion,
     required String idReceptor,
     required int monto,
+    required int idSolucion,
   }) async {
-    // Redirigimos al nuevo método
     return otorgarPuntos(
       idPublicacion: idPublicacion,
       idReceptor: idReceptor,
       monto: monto,
+      idSolucion: idSolucion,
     );
   }
 

@@ -345,12 +345,13 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
           .eq('id_publicacion', widget.publicacionId);
       print("7. Publicaciones actualizadas");
       print("8. Antes de pago repository");
-      // final pago = await _pagoRepository.otorgarPuntos(
-      //   idPublicacion: widget.publicacionId,
-      //   idReceptor: idSolver,
-      //   monto: puntosOtorgados,
-      // );
-      // print("9. Pago realizado, id: ${pago.idPago}");
+      final pago = await _pagoRepository.otorgarPuntos(
+        idPublicacion: widget.publicacionId,
+        idReceptor: idSolver,
+        monto: puntosOtorgados,
+        idSolucion: idSolucion,
+      );
+      print("9. Pago realizado, id: ${pago.idPago}");
       print("10. Insertando notificación...");
       // Insert notification for the solver
       print("📌📌📌📌📌📌 idSolver: '$idSolver'");
@@ -360,18 +361,19 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         'mensaje':
             '¡Tu solución fue aceptada! Recibiste $puntosOtorgados puntos por resolver "$titulo".',
         'tipo': 'solucion_aceptada',
+        'id_publicacion': widget.publicacionId,
         'leida': false,
       });
       print("✅ Notificación insertada correctamente");
 
-      // await _cargarTodo();
-      // if (!mounted) return;
-      // _mostrarConfirmacionPago(
-      //   pago.idPago,
-      //   puntosOtorgados,
-      //   solverNombre,
-      //   estrellas,
-      // );
+      await _cargarTodo();
+      if (!mounted) return;
+      _mostrarConfirmacionPago(
+        pago.idPago,
+        puntosOtorgados,
+        solverNombre,
+        estrellas,
+      );
     } catch (e) {
       if (!mounted) return;
       _snack('Error al procesar: $e', color: Colors.red);
