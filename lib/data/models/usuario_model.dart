@@ -6,7 +6,7 @@ class UsuarioModel {
   final String carnet;
   final int? carreraId;
   final int puntuacion;
-  final double reputacionPromedio;
+  final int reputacion;
   final int totalCalificaciones;
   final String? authUserId;
 
@@ -18,7 +18,7 @@ class UsuarioModel {
     required this.carnet,
     this.carreraId,
     this.puntuacion = 0,
-    this.reputacionPromedio = 0.0,
+    this.reputacion = 0,
     this.totalCalificaciones = 0,
     this.authUserId,
   });
@@ -34,8 +34,7 @@ class UsuarioModel {
           ? json['carrera_id'] as int
           : int.tryParse(json['carrera_id']?.toString() ?? ''),
       puntuacion: json['puntuacion'] ?? 0,
-      reputacionPromedio:
-          (json['reputacion_promedio'] as num?)?.toDouble() ?? 0.0,
+      reputacion: (json['reputacion'] as num?)?.toInt() ?? 0,
       totalCalificaciones: json['total_calificaciones'] as int? ?? 0,
       authUserId: json['auth_user_id']?.toString(),
     );
@@ -49,6 +48,7 @@ class UsuarioModel {
       'carnet': carnet,
       'carrera_id': carreraId,
       'puntuacion': puntuacion,
+      'reputacion': reputacion,
     };
   }
 
@@ -59,7 +59,7 @@ class UsuarioModel {
     String? carnet,
     int? carreraId,
     int? puntuacion,
-    double? reputacionPromedio,
+    int? reputacion,
     int? totalCalificaciones,
     String? authUserId,
   }) {
@@ -71,7 +71,7 @@ class UsuarioModel {
       carnet: carnet ?? this.carnet,
       carreraId: carreraId ?? this.carreraId,
       puntuacion: puntuacion ?? this.puntuacion,
-      reputacionPromedio: reputacionPromedio ?? this.reputacionPromedio,
+      reputacion: reputacion ?? this.reputacion,
       totalCalificaciones: totalCalificaciones ?? this.totalCalificaciones,
       authUserId: authUserId ?? this.authUserId,
     );

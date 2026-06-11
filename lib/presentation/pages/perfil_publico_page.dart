@@ -119,8 +119,7 @@ class _PerfilPublicoPageState extends ConsumerState<PerfilPublicoPage> {
                         _buildInfoRow(
                           icon: Icons.star_rate_rounded,
                           title: 'Reputación',
-                          value:
-                              '${usuario.reputacionPromedio.toStringAsFixed(1)} / 5.0',
+                          value: '${usuario.reputacion}',
                         ),
                       ],
                     ),
