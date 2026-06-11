@@ -92,14 +92,11 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     );
     setState(() => _cargandoSoluciones = true);
     try {
-      final solData = await _supabase
-          .from('soluciones')
-          .select('*, usuarios (nombre, apellido)')
-          .eq('id_publicacion', widget.publicacionId)
-          .order('fecha_subida', ascending: false);
+      final solData = await _solucionesRepository
+          .getSolucionesVistaPorPublicacion(widget.publicacionId);
       debugPrint("📦 Se obtuvieron ${solData.length} soluciones.");
       setState(() {
-        _soluciones = List<Map<String, dynamic>>.from(solData);
+        _soluciones = solData;
         _cargandoSoluciones = false;
       });
     } catch (e) {
@@ -182,7 +179,8 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
       return;
     }
 
-    if (_publicacion?['estado'] == 'resuelto') {
+    if (_publicacion?['estado'] == 'resuelto' ||
+        _publicacion?['estado'] == 'pagado') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Esta publicaciÃ³n ya fue resuelta')),
       );
@@ -297,15 +295,12 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
             .getPublicUrl(pathArchivo);
       }
 
-      await _supabase.from('soluciones').insert({
-        'id_publicacion': widget.publicacionId,
-        'usuario_id': _currentUserId,
-        'cedula_usuario_solver': _cedulaUsuario ?? 'sin_cedula',
-        'comentario_solucion': _solucionController.text.trim(),
-        'archivo_url': urlArchivoSubido,
-        'aceptada': false,
-        'fecha_subida': DateTime.now().toIso8601String(),
-      });
+      final solucionGuardada = await _solucionesRepository
+          .subirSolucionDesdeApp(
+            idPublicacion: widget.publicacionId,
+            comentario: _solucionController.text.trim(),
+            archivoUrl: urlArchivoSubido,
+          );
 
       debugPrint("✅ Solución insertada correctamente.");
 
@@ -313,6 +308,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
       setState(() {
         _archivoSolucionBytes = null;
         _nombreArchivoSolucion = null;
+        _soluciones = [solucionGuardada, ..._soluciones];
       });
 
       await Future.delayed(const Duration(milliseconds: 500), () async {
@@ -528,7 +524,8 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                     final sol = _soluciones[index];
                     final esAutor = _publicacion?['autor_id'] == _currentUserId;
                     final publicacionResuelta =
-                        _publicacion?['estado'] == 'resuelto';
+                        _publicacion?['estado'] == 'resuelto' ||
+                        _publicacion?['estado'] == 'pagado';
                     final estaAceptada = sol['aceptada'] == true;
                     //final sol = _soluciones[index];
                     final autor = sol['usuarios'] != null
@@ -691,7 +688,9 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   Widget _buildFormularioSolucion() {
     if (_publicacion == null) return const SizedBox.shrink();
     final esMiPropioEjercicio = _publicacion!['autor_id'] == _currentUserId;
-    final estaResuelta = _publicacion!['estado'] == 'resuelto';
+    final estaResuelta =
+        _publicacion!['estado'] == 'resuelto' ||
+        _publicacion!['estado'] == 'pagado';
 
     if (estaResuelta) {
       return Card(

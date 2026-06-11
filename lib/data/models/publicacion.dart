@@ -11,6 +11,8 @@ class Publicacion {
   final int puntuacion;
   final String? autorId;
 
+  bool get estaResuelta => estado == 'resuelto' || estado == 'pagado';
+
   Publicacion({
     required this.id,
     required this.titulo,

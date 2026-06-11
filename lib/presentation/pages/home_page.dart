@@ -31,6 +31,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   RealtimeChannel? _publicacionesChannel;
   RealtimeChannel? _solucionesChannel;
   final Set<int> _solucionesAceptadasNotificadas = {};
+  final Set<int> _publicacionesResueltasNotificadas = {};
 
   String? _filtroFacultadSeleccionada;
   String? _filtroMateriaSeleccionada;
@@ -69,8 +70,34 @@ class _HomePageState extends ConsumerState<HomePage> {
           event: PostgresChangeEvent.update,
           schema: 'public',
           table: 'publicaciones',
-          callback: (_) {
-            if (mounted) _cargarPublicaciones();
+          callback: (payload) {
+            if (!mounted) return;
+
+            final publicacion = payload.newRecord;
+            final idPublicacion = publicacion['id_publicacion'];
+            final nuevoEstado = publicacion['estado'];
+            final estabaPendiente =
+                idPublicacion is int &&
+                _publicaciones.any(
+                  (pub) => pub.id == idPublicacion && !pub.estaResuelta,
+                );
+            final ahoraEstaResuelta = _estadoEsResuelto(nuevoEstado);
+
+            _cargarPublicaciones();
+
+            if (idPublicacion is! int ||
+                !estabaPendiente ||
+                !ahoraEstaResuelta ||
+                !_publicacionesResueltasNotificadas.add(idPublicacion)) {
+              return;
+            }
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Un ejercicio fue marcado como resuelto.'),
+                backgroundColor: Colors.green,
+              ),
+            );
           },
         )
         .subscribe();
@@ -105,6 +132,10 @@ class _HomePageState extends ConsumerState<HomePage> {
           },
         )
         .subscribe();
+  }
+
+  bool _estadoEsResuelto(dynamic estado) {
+    return estado == 'resuelto' || estado == 'pagado';
   }
 
   Future<void> _cargarPublicaciones() async {
@@ -143,9 +174,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (_filtroEstado == 'todos') {
       return _publicaciones;
     } else if (_filtroEstado == 'pendiente') {
-      return _publicaciones.where((pub) => pub.estado != 'resuelto').toList();
+      return _publicaciones.where((pub) => !pub.estaResuelta).toList();
     } else if (_filtroEstado == 'resuelto') {
-      return _publicaciones.where((pub) => pub.estado == 'resuelto').toList();
+      return _publicaciones.where((pub) => pub.estaResuelta).toList();
     }
     return _publicaciones;
   }
@@ -403,7 +434,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (descripcionPreview.isEmpty) {
       descripcionPreview = 'Sin descripción';
     }
-    final estaResuelto = pub.estado == 'resuelto';
+    final estaResuelto = pub.estaResuelta;
     final estadoLabel = estaResuelto ? 'Resuelto' : 'Pendiente';
     final estadoColor = estaResuelto ? const Color(0xFF2E7D32) : Colors.orange;
     final estadoBackground = estaResuelto

@@ -58,7 +58,7 @@ class _HistorialState extends State<Historial> {
             materias!left (nombre_materias)
           ''')
           .eq('autor_id', user.id)
-          .eq('estado', 'resuelto')
+          .inFilter('estado', ['resuelto', 'pagado'])
           .order('tiempo', ascending: false);
 
       final ejerciciosResueltos = <Map<String, dynamic>>[];
@@ -148,9 +148,10 @@ class _HistorialState extends State<Historial> {
           final materiaNombre =
               pub['materias']?['nombre_materias'] ?? 'Materia desconocida';
           final estado = pub['estado'] ?? 'pendiente';
-          final estadoLabel = estado == 'pendiente' ? 'Pendiente' : 'Resuelto';
+          final estaResuelto = estado == 'resuelto' || estado == 'pagado';
+          final estadoLabel = estaResuelto ? 'Resuelto' : 'Pendiente';
           final icono = tipo == 'pedido'
-              ? (estado == 'pendiente' ? Icons.edit_note : Icons.check_circle)
+              ? (!estaResuelto ? Icons.edit_note : Icons.check_circle)
               : Icons.assignment_turned_in;
 
           return Card(
@@ -172,7 +173,7 @@ class _HistorialState extends State<Historial> {
                   const SizedBox(height: 4),
                   Chip(
                     label: Text(estadoLabel),
-                    backgroundColor: estado == 'pendiente'
+                    backgroundColor: !estaResuelto
                         ? Colors.orange[100]
                         : Colors.green[100],
                     visualDensity: VisualDensity.compact,
