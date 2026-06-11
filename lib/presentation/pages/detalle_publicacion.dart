@@ -300,6 +300,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     String idSolver,
     String solverNombre,
   ) async {
+    print("🚀 Entrando a _aceptarSolucionConCalificacion");
     if (_currentUserId == null) {
       _snack('Debes iniciar sesión para aceptar soluciones');
       return;
@@ -318,35 +319,41 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     }
 
     final puntosBase = (_publicacion?['puntuacion'] as int?) ?? 0;
-
+    print("1. Antes de mostrar diálogo");
     final estrellas = await _mostrarDialogoCalificacion(
       solverNombre: solverNombre,
       puntosBase: puntosBase,
     );
+    print("2. Diálogo cerrado, estrellas: $estrellas");
     if (estrellas == null || estrellas < 1 || estrellas > 5) return;
+    print("3. Estrellas inválidas, saliendo");
 
     final puntosOtorgados = (puntosBase * estrellas / 5).round();
-
+    print("4. Calculando puntos: $puntosOtorgados");
     setState(() => _procesandoPago = true);
+    print("5. Actualizando soluciones...");
     try {
       await _supabase
           .from('soluciones')
           .update({'aceptada': true, 'calificacion': estrellas})
           .eq('id_solucion', idSolucion)
           .eq('id_publicacion', widget.publicacionId);
-
+      print("6. Soluciones actualizadas");
       await _supabase
           .from('publicaciones')
           .update({'estado': 'pagado'})
           .eq('id_publicacion', widget.publicacionId);
-
-      final pago = await _pagoRepository.otorgarPuntos(
-        idPublicacion: widget.publicacionId,
-        idReceptor: idSolver,
-        monto: puntosOtorgados,
-      );
-
+      print("7. Publicaciones actualizadas");
+      print("8. Antes de pago repository");
+      // final pago = await _pagoRepository.otorgarPuntos(
+      //   idPublicacion: widget.publicacionId,
+      //   idReceptor: idSolver,
+      //   monto: puntosOtorgados,
+      // );
+      // print("9. Pago realizado, id: ${pago.idPago}");
+      print("10. Insertando notificación...");
       // Insert notification for the solver
+      print("📌📌📌📌📌📌 idSolver: '$idSolver'");
       final titulo = _publicacion?['titulo'] ?? 'un ejercicio';
       await _supabase.from('notificaciones').insert({
         'usuario_id': idSolver,
@@ -355,15 +362,16 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         'tipo': 'solucion_aceptada',
         'leida': false,
       });
+      print("✅ Notificación insertada correctamente");
 
-      await _cargarTodo();
-      if (!mounted) return;
-      _mostrarConfirmacionPago(
-        pago.idPago,
-        puntosOtorgados,
-        solverNombre,
-        estrellas,
-      );
+      // await _cargarTodo();
+      // if (!mounted) return;
+      // _mostrarConfirmacionPago(
+      //   pago.idPago,
+      //   puntosOtorgados,
+      //   solverNombre,
+      //   estrellas,
+      // );
     } catch (e) {
       if (!mounted) return;
       _snack('Error al procesar: $e', color: Colors.red);

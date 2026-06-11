@@ -140,9 +140,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (_filtroEstado == 'todos') {
       return _publicaciones;
     } else if (_filtroEstado == 'pendiente') {
-      return _publicaciones.where((pub) => pub.estado != 'resuelto').toList();
+      return _publicaciones
+          .where((pub) => pub.estado != 'resuelto' && pub.estado != 'pagado')
+          .toList();
     } else if (_filtroEstado == 'resuelto') {
-      return _publicaciones.where((pub) => pub.estado == 'resuelto').toList();
+      return _publicaciones
+          .where((pub) => pub.estado == 'resuelto' || pub.estado == 'pagado')
+          .toList();
     }
     return _publicaciones;
   }
@@ -388,7 +392,8 @@ class _HomePageState extends ConsumerState<HomePage> {
             DetallePublicacionPage(publicacionId: publicacionId),
       ),
     );
-    _cargarPublicaciones();
+    await _cargarPublicaciones();
+    setState(() {});
   }
 
   Widget _buildProblemCard(Publicacion pub) {
@@ -399,7 +404,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (descripcionPreview.isEmpty) {
       descripcionPreview = 'Sin descripción';
     }
-    final estaResuelto = pub.estado == 'resuelto';
+    final estaResuelto = pub.estado == 'resuelto' || pub.estado == 'pagado';
     final estadoLabel = estaResuelto ? 'Resuelto' : 'Pendiente';
     final estadoColor = estaResuelto ? const Color(0xFF2E7D32) : Colors.orange;
     final estadoBackground = estaResuelto
@@ -446,12 +451,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   color: const Color(0xFF1565C0),
                                   backgroundColor: const Color(0xFFE3F2FD),
                                 ),
-                              if (_filtroEstado == 'todos')
-                                _buildInfoChip(
-                                  label: estadoLabel,
-                                  color: estadoColor,
-                                  backgroundColor: estadoBackground,
-                                ),
+                              _buildInfoChip(
+                                label: estadoLabel,
+                                color: estadoColor,
+                                backgroundColor: estadoBackground,
+                              ),
                             ],
                           ),
                           const SizedBox(height: 6),

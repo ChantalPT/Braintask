@@ -101,10 +101,9 @@ class NotificacionesNotifier extends AsyncNotifier<List<NotificacionModel>> {
     final supabase = Supabase.instance.client;
     final data = await supabase
         .from('notificaciones')
-        .select()
+        .select('*')
         .eq('usuario_id', userId)
         .order('created_at', ascending: false);
-
     return (data as List)
         .map((e) => NotificacionModel.fromJson(e as Map<String, dynamic>))
         .toList();
