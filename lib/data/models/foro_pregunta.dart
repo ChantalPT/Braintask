@@ -42,7 +42,7 @@ class ForoPregunta {
       titulo: json['titulo'] ?? 'Sin título',
       descripcion: json['descripcion'] ?? '',
       autorNombre: nombre,
-      votos: ((json['votos_foro'] as int?) ?? 0).clamp(0, 999999),
+      votos: (json['votos_foro'] as int?) ?? 0,
       puntosBase: ((json['puntuacion'] as int?) ?? 0).clamp(0, 999999),
       respuestasCount: respCount, // Obtener recuento real de base de datos
       tiempo: json['tiempo'] != null

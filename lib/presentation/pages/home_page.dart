@@ -9,7 +9,6 @@ import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
 import 'filtro.dart';
 import 'help_support_page.dart';
-import 'pantalla_carga.dart';
 import 'perfil_page.dart';
 import '../../logic/providers/usuario_provider.dart';
 
@@ -406,6 +405,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         : const Color(0xFFFFF3E0);
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final esMiPregunta = pub.autorId != null && pub.autorId == currentUserId;
+    // Solo se muestra badge si es la pregunta del usuario actual
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -438,17 +438,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                             spacing: 6,
                             runSpacing: 6,
                             children: [
-                              _buildInfoChip(
-                                label: esMiPregunta
-                                    ? 'Tu pregunta'
-                                    : 'Pregunta de otro usuario',
-                                color: esMiPregunta
-                                    ? const Color(0xFF1565C0)
-                                    : const Color(0xFF455A64),
-                                backgroundColor: esMiPregunta
-                                    ? const Color(0xFFE3F2FD)
-                                    : const Color(0xFFECEFF1),
-                              ),
+                              if (esMiPregunta)
+                                _buildInfoChip(
+                                  label: 'Tu pregunta',
+                                  color: const Color(0xFF1565C0),
+                                  backgroundColor: const Color(0xFFE3F2FD),
+                                ),
                               if (_filtroEstado == 'todos')
                                 _buildInfoChip(
                                   label: estadoLabel,
@@ -572,19 +567,6 @@ class _HomePageState extends ConsumerState<HomePage> {
               );
             },
             tooltip: 'Historial',
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black),
-            onPressed: () async {
-              await Supabase.instance.client.auth.signOut();
-              if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const PantallaCarga()),
-                  (route) => false,
-                );
-              }
-            },
-            tooltip: 'Cerrar sesión',
           ),
         ],
       ),

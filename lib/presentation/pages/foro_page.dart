@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/foro_pregunta.dart';
 import '../../logic/providers/foro_provider.dart';
-import 'detalle_foro_pregunta.dart';
+import 'detalle_publicacion.dart';
 
 class ForoPage extends ConsumerWidget {
   const ForoPage({super.key});
@@ -91,7 +91,8 @@ class ForoPage extends ConsumerWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DetalleForoPreguntaPage(pregunta: pregunta),
+            builder: (context) =>
+                DetallePublicacionPage(publicacionId: pregunta.id),
           ),
         );
       },

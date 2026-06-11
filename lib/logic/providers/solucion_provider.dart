@@ -3,13 +3,13 @@ import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/repositories/solucion_repository.dart';
-import '../../data/models/soluciones.dart';   // ← Importa el modelo real
+import '../../data/models/soluciones.dart';
 import 'usuario_provider.dart';
 
 part 'solucion_provider.g.dart';
 
 @riverpod
-SolucionesRepository solucionesRepository(Ref ref) {   // ← Ref, no SolucionesRepositoryRef
+SolucionesRepository solucionesRepository(Ref ref) {
   return SolucionesRepository(Supabase.instance.client);
 }
 
@@ -27,14 +27,16 @@ class SolucionesNotifier extends _$SolucionesNotifier {
     File? archivo,
   }) async {
     final usuario = await ref.read(usuarioProvider.future);
-    final cedula = usuario.cedula;
+    final cedulaInt = int.tryParse(usuario.cedula) ?? 0;
+    final authId = usuario.authUserId ?? '';
 
     final priorState = state.value ?? [];
     final tempId = DateTime.now().millisecondsSinceEpoch;
     final nuevaLocal = Solucion(
       idSolucion: tempId,
       idPublicacion: idPublicacion,
-      cedulaUsuarioSolver: cedula,
+      cedulaUsuarioSolver: cedulaInt,
+      usuarioId: authId,
       archivoUrl: null,
       comentarioSolucion: comentario,
       fechaSubida: DateTime.now(),
@@ -45,7 +47,8 @@ class SolucionesNotifier extends _$SolucionesNotifier {
       final repo = ref.read(solucionesRepositoryProvider);
       await repo.subirSolucion(
         idPublicacion: idPublicacion,
-        cedulaUsuario: cedula,
+        cedulaUsuarioSolver: cedulaInt,
+        usuarioId: authId,
         comentario: comentario,
         archivo: archivo,
       );

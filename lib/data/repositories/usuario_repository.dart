@@ -28,4 +28,24 @@ class UsuarioRepository {
         .update(usuario.toUpdateJson())
         .eq('auth_user_id', user.id);
   }
+
+  Future<UsuarioModel> obtenerPerfilPublico(String authUserId) async {
+    final data = await _supabase
+        .from('usuarios')
+        .select()
+        .eq('auth_user_id', authUserId)
+        .single();
+
+    return UsuarioModel.fromJson(data);
+  }
+
+  Future<UsuarioModel> obtenerPerfilPorCedula(int cedula) async {
+    final data = await _supabase
+        .from('usuarios')
+        .select()
+        .eq('cedula', cedula)
+        .single();
+
+    return UsuarioModel.fromJson(data);
+  }
 }

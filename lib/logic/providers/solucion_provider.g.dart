@@ -55,7 +55,7 @@ final class SolucionesRepositoryProvider
 }
 
 String _$solucionesRepositoryHash() =>
-    r'fee8dba3fb47572eaac26929ebfddccd3c50800b';
+    r'ba88d2dca9fafbd60a29cc7571aa4c20a6b15bce';
 
 @ProviderFor(SolucionesNotifier)
 final solucionesProvider = SolucionesNotifierFamily._();
