@@ -1,20 +1,15 @@
-## Table `usuarios`
+## Table `notificaciones`
 
 ### Columns
 
 | Name | Type | Constraints |
 |------|------|-------------|
-| `cedula` | `int8` | Primary Unique Identity |
-| `nombre` | `text` |  |
-| `apellido` | `text` |  Nullable |
-| `carnet` | `text` |  Unique |
-| `correo` | `text` |  Unique |
-| `puntuacion` | `int8` |  |
-| `reputacion` | `float8` |  Nullable |
-| `total_calificaciones` | `int4` |  Nullable |
-| `reputacion_promedio` | `float8` |  Nullable |
-| `auth_user_id` | `uuid` |  Nullable Unique |
-| `carrera_id` | `int4` |  Nullable |
+| `id` | `int4` | Primary |
+| `usuario_id` | `uuid` |  |
+| `mensaje` | `text` |  |
+| `leida` | `bool` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+| `tipo` | `text` |  Nullable |
 
 ## Table `publicaciones`
 
@@ -36,42 +31,6 @@
 | `autor_id` | `uuid` |  Nullable |
 | `votos_foro` | `int4` |  Nullable |
 
-## Table `facultades`
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `id_facultad` | `int8` | Primary Identity |
-| `nombre_facultad` | `text` |  |
-
-## Table `materias`
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `id_materias` | `int8` | Primary Identity |
-| `nombre_materias` | `text` |  |
-| `id_facultad` | `int8` |  Nullable |
-
-## Table `calificaciones`
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `id` | `int8` | Primary Identity |
-| `publicacion_id` | `int8` |  |
-| `calificador` | `uuid` |  |
-| `calificado` | `uuid` |  |
-| `puntuacion` | `int4` |  |
-| `comentario` | `text` |  Nullable |
-| `fecha` | `timestamptz` |  Nullable |
-| `id_solucion` | `int4` |  Nullable |
-| `usuario_id` | `uuid` |  Nullable |
-| `estrellas` | `int4` |  Nullable |
-
 ## Table `soluciones`
 
 ### Columns
@@ -89,64 +48,3 @@
 | `created_at` | `timestamptz` |  Nullable |
 | `usuario_id` | `uuid` |  Nullable |
 | `aceptada` | `bool` |  Nullable |
-
-## Table `calificaciones_dificultad`
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `id_calificacion` | `int8` | Primary |
-| `id_publicacion` | `int4` |  Nullable |
-| `cedula_usuarios` | `uuid` |  Nullable |
-| `dificultad` | `int4` |  Nullable |
-| `created_at` | `timestamptz` |  Nullable |
-
-## Table `carreras`
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `id` | `int4` | Primary |
-| `nombre` | `text` |  Unique |
-
-## Table `calificacion_soluciones`
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `id` | `int8` | Primary Identity |
-| `id_solucion` | `int8` |  |
-| `usuario_id` | `uuid` |  Nullable |
-| `estrellas` | `int4` |  Nullable |
-
-## Table `pagos`
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `id_pago` | `int8` | Primary Identity |
-| `id_publicacion` | `int8` |  |
-| `id_solucion` | `int8` |  |
-| `usuario_pagador_id` | `uuid` |  |
-| `usuario_receptor_id` | `uuid` |  |
-| `monto` | `int8` |  |
-| `fecha_pago` | `timestamptz` |  Nullable |
-| `created_at` | `timestamptz` |  Nullable |
-
-## Table `foro_comentarios`
-
-### Columns
-
-| Name | Type | Constraints |
-|------|------|-------------|
-| `id_comentario` | `int8` | Primary Identity |
-| `publicacion_id` | `int8` |  Nullable |
-| `usuario_cedula` | `int8` |  Nullable |
-| `contenido` | `text` |  |
-| `votos` | `int4` |  Nullable |
-| `fecha_creacion` | `timestamptz` |  |
-

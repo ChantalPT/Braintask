@@ -346,6 +346,16 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         monto: puntosOtorgados,
       );
 
+      // Insert notification for the solver
+      final titulo = _publicacion?['titulo'] ?? 'un ejercicio';
+      await _supabase.from('notificaciones').insert({
+        'usuario_id': idSolver,
+        'mensaje':
+            '¡Tu solución fue aceptada! Recibiste $puntosOtorgados puntos por resolver "$titulo".',
+        'tipo': 'solucion_aceptada',
+        'leida': false,
+      });
+
       await _cargarTodo();
       if (!mounted) return;
       _mostrarConfirmacionPago(

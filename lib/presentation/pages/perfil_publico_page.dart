@@ -86,31 +86,6 @@ class _PerfilPublicoPageState extends ConsumerState<PerfilPublicoPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.star, color: Colors.amber, size: 24),
-                    const SizedBox(width: 4),
-                    Text(
-                      usuario.reputacionPromedio > 0
-                          ? '${usuario.reputacionPromedio.toStringAsFixed(1)} / 5.0'
-                          : 'Sin calificaciones',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (usuario.totalCalificaciones > 0)
-                      Text(
-                        ' (${usuario.totalCalificaciones} reseñas)',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                  ],
-                ),
                 const SizedBox(height: 24),
                 Card(
                   elevation: 0,
@@ -144,9 +119,8 @@ class _PerfilPublicoPageState extends ConsumerState<PerfilPublicoPage> {
                         _buildInfoRow(
                           icon: Icons.star_rate_rounded,
                           title: 'Reputación',
-                          value: usuario.reputacionPromedio > 0
-                              ? '${usuario.reputacionPromedio.toStringAsFixed(1)} / 5.0'
-                              : 'Sin estrellas',
+                          value:
+                              '${usuario.reputacionPromedio.toStringAsFixed(1)} / 5.0',
                         ),
                       ],
                     ),
