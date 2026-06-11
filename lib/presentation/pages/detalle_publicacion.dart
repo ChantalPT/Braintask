@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
@@ -6,16 +7,17 @@ import 'package:braintask/presentation/pages/detalle_foro_pregunta.dart';
 import 'package:braintask/data/models/foro_pregunta.dart';
 import 'package:braintask/data/repositories/solucion_repository.dart';
 import 'package:braintask/data/repositories/pago_repository.dart';
+import 'package:braintask/logic/providers/usuario_provider.dart';
 
-class DetallePublicacionPage extends StatefulWidget {
+class DetallePublicacionPage extends ConsumerStatefulWidget {
   final int publicacionId;
   const DetallePublicacionPage({super.key, required this.publicacionId});
 
   @override
-  State<DetallePublicacionPage> createState() => _DetallePublicacionPageState();
+  ConsumerState<DetallePublicacionPage> createState() => _DetallePublicacionPageState();
 }
 
-class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
+class _DetallePublicacionPageState extends ConsumerState<DetallePublicacionPage> {
   final _supabase = Supabase.instance.client;
   late final SolucionesRepository _solucionesRepository;
   late final PagoRepository _pagoRepository;
@@ -80,7 +82,6 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         _publicacion = pubData;
       });
 
-      // Obtener datos del autor
       if (pubData['autor_id'] != null) {
         final autorData = await _supabase
             .from('usuarios')
@@ -111,23 +112,19 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     try {
       final solData = await _supabase
           .from('soluciones')
-          .select('*, usuarios!soluciones_usuario_id_fkey (nombre, apellido, puntuacion)')
+          .select('''
+            *,
+            usuarios!soluciones_usuario_id_fkey (
+              nombre,
+              apellido,
+              puntuacion,
+              auth_user_id
+            )
+          ''')
           .eq('id_publicacion', widget.publicacionId)
           .order('fecha_subida', ascending: false);
-
-      print('🔍 Soluciones encontradas: ${solData.length}');
-
-      final List<Map<String, dynamic>> solucionesConUsuario = [];
-      for (var sol in solData) {
-        final usuario = sol['usuarios'] ?? {};
-        solucionesConUsuario.add({
-          ...sol,
-          'usuarios': usuario,
-        });
-      }
-
       setState(() {
-        _soluciones = solucionesConUsuario;
+        _soluciones = List<Map<String, dynamic>>.from(solData);
         _cargandoSoluciones = false;
       });
     } catch (e) {
@@ -273,8 +270,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
 
   Future<void> _aceptarSolucionConCalificacion(
     int idSolucion,
-    String idSolver,
-    String solverNombre,
+    Map<String, dynamic> solucion,
   ) async {
     if (_currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -300,6 +296,17 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     }
 
     final puntosBase = (_publicacion?['puntuacion'] as int?) ?? 0;
+
+    final usuarioData = solucion['usuarios'];
+    final idSolver = usuarioData?['auth_user_id'] as String?;
+    final solverNombre = '${usuarioData?['nombre'] ?? ''} ${usuarioData?['apellido'] ?? ''}'.trim();
+
+    if (idSolver == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: No se encontró el auth_user_id del solver')),
+      );
+      return;
+    }
 
     final estrellas = await _mostrarDialogoCalificacion(
       solverNombre: solverNombre,
@@ -327,9 +334,23 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
 
       final pago = await _pagoRepository.otorgarPuntos(
         idPublicacion: widget.publicacionId,
+        idSolucion: idSolucion,
         idReceptor: idSolver,
         monto: puntosOtorgados,
       );
+
+      // 🔁 REFRESCAR EL PROVIDER DEL USUARIO SI EL SOLVER ES EL USUARIO ACTUAL
+      if (idSolver == _currentUserId) {
+        ref.refresh(usuarioProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('¡Tus puntos han sido actualizados!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
 
       await _cargarTodo();
 
@@ -535,9 +556,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     if (_publicacion == null) return;
     final titulo = _publicacion!['titulo'] ?? 'Sin título';
     final descripcion = _publicacion!['descripcion'] ?? 'Sin descripción';
-    final autorNombre = _autorPublicacion != null
-        ? '${_autorPublicacion!['nombre']} ${_autorPublicacion!['apellido']}'
-        : 'Usuario';
+    final autorNombre = _publicacion!['autor_nombre'] ?? 'Usuario';
     final puntosBase = _publicacion!['puntuacion'] ?? 0;
 
     final preguntaForo = ForoPregunta(
@@ -581,9 +600,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     final autorNombre = _autorPublicacion != null
         ? '${_autorPublicacion!['nombre']} ${_autorPublicacion!['apellido']}'
         : 'Usuario desconocido';
-    final autorPuntos = _autorPublicacion != null
-        ? _autorPublicacion!['puntuacion'] ?? 0
-        : 0;
+    final autorPuntos = _autorPublicacion != null ? _autorPublicacion!['puntuacion'] ?? 0 : 0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -600,11 +617,6 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.forum, color: Colors.blue),
-            onPressed: _abrirForo,
-            tooltip: 'Foro de discusión',
-          ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.orange),
             onPressed: () async {
@@ -646,7 +658,6 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Tarjeta del enunciado
                     Card(
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -673,7 +684,6 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                               ],
                             ),
                             const SizedBox(height: 8),
-                            // Autor y sus puntos
                             Row(
                               children: [
                                 const Icon(Icons.person, size: 16, color: Colors.blue),
@@ -713,11 +723,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                const Icon(
-                                  Icons.monetization_on,
-                                  color: Colors.orange,
-                                  size: 18,
-                                ),
+                                const Icon(Icons.monetization_on, color: Colors.orange, size: 18),
                                 const SizedBox(width: 5),
                                 Text(
                                   '$puntosBase pts base',
@@ -731,16 +737,10 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                             const Divider(height: 24),
                             const Text(
                               'Enunciado:',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey,
-                              ),
+                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
                             ),
                             const SizedBox(height: 6),
-                            Text(
-                              descripcion,
-                              style: const TextStyle(fontSize: 15),
-                            ),
+                            Text(descripcion, style: const TextStyle(fontSize: 15)),
                             if (archivoPubUrl != null) ...[
                               const SizedBox(height: 12),
                               _buildArchivoGrande(archivoPubUrl),
@@ -756,10 +756,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                       children: [
                         Text(
                           'Soluciones Propuestas (${_soluciones.length})',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         if (_cargandoSoluciones)
                           const SizedBox(
@@ -790,13 +787,11 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                         itemBuilder: (context, index) {
                           final sol = _soluciones[index];
                           final esAutor = _publicacion?['autor_id'] == _currentUserId;
-                          final publicacionCerrada =
-                              estadoPublicacion == 'resuelto' || estadoPublicacion == 'pagado';
+                          final publicacionCerrada = estadoPublicacion == 'resuelto' || estadoPublicacion == 'pagado';
                           final estaAceptada = sol['aceptada'] == true;
                           final usuarioSol = sol['usuarios'] ?? {};
                           final nombreSolver = '${usuarioSol['nombre'] ?? 'Usuario'} ${usuarioSol['apellido'] ?? ''}'.trim();
                           final puntosSolver = usuarioSol['puntuacion'] ?? 0;
-                          final idSolver = sol['usuario_id']?.toString() ?? '';
                           final calificacionAutor = sol['calificacion'] as int?;
                           final calificaciones = List<Map<String, dynamic>>.from(
                             sol['calificacion_soluciones'] ?? [],
@@ -840,10 +835,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                                           const SizedBox(width: 4),
                                           Text(
                                             nombreSolver,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.blue,
-                                            ),
+                                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
                                           ),
                                           const SizedBox(width: 8),
                                           Container(
@@ -880,8 +872,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                                       child: ElevatedButton.icon(
                                         onPressed: () => _aceptarSolucionConCalificacion(
                                           sol['id_solucion'],
-                                          idSolver,
-                                          nombreSolver,
+                                          sol,
                                         ),
                                         icon: const Icon(Icons.star),
                                         label: const Text(
@@ -896,10 +887,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                                       ),
                                     ),
                                   if ((sol['comentario_solucion'] ?? '').isNotEmpty)
-                                    Text(
-                                      sol['comentario_solucion'],
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
+                                    Text(sol['comentario_solucion'], style: const TextStyle(fontSize: 14)),
                                   if ((sol['archivo_url'] ?? '').isNotEmpty) ...[
                                     const SizedBox(height: 10),
                                     _buildArchivoGrande(sol['archivo_url']),
@@ -914,10 +902,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                                           const SizedBox(width: 4),
                                           Text(
                                             'Calificación del autor: $calificacionAutor ★',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.amber,
-                                            ),
+                                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.amber),
                                           ),
                                         ],
                                       ),
@@ -1121,10 +1106,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                 ),
                 child: const Text(
                   'No puedes responder a tu propia pregunta.',
-                  style: TextStyle(
-                    color: Colors.deepOrange,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -1145,11 +1127,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
             if (_nombreArchivoSolucion != null) ...[
               Text(
                 'Adjunto: $_nombreArchivoSolucion',
-                style: const TextStyle(
-                  color: Colors.green,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12),
               ),
               const SizedBox(height: 12),
             ],
@@ -1159,9 +1137,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               enabled: !_enviandoSolucion && !esMiPropioEjercicio,
               decoration: InputDecoration(
                 hintText: 'Explica tu resolución...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
@@ -1170,17 +1146,12 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               height: 48,
               child: ElevatedButton(
                 onPressed: _enviandoSolucion || esMiPropioEjercicio ? null : _subirYEnviarSolucion,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF007BFF),
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF007BFF)),
                 child: _enviandoSolucion
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
                         'ENVIAR SOLUCIÓN',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
               ),
             ),

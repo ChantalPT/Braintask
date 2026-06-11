@@ -104,6 +104,13 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
     );
   }
 
+  Future<void> _refreshPerfil() async {
+    // Forzar recarga del provider
+    ref.refresh(usuarioProvider);
+    // Esperar un pequeño momento para que se complete la carga
+    await Future.delayed(Duration.zero);
+  }
+
   @override
   void dispose() {
     _nombreController.dispose();
@@ -132,147 +139,149 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
           ),
         ],
       ),
-      body: usuarioAsync.when(
-        data: (usuario) {
-          _inicializarCampos(usuario);
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Theme(
-              data: Theme.of(context).copyWith(
-                inputDecorationTheme: const InputDecorationTheme(
-                  border: OutlineInputBorder(),
+      body: RefreshIndicator(
+        onRefresh: _refreshPerfil,
+        child: usuarioAsync.when(
+          data: (usuario) {
+            _inicializarCampos(usuario);
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(20.0),
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  inputDecorationTheme: const InputDecorationTheme(
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              child: Form(
-                key: _formKey,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Mostrar puntos acumulados
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amber.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 30),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Puntos acumulados',
-                                style: TextStyle(fontSize: 14, color: Colors.grey),
-                              ),
-                              Text(
-                                '${usuario.puntuacion} pts',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.amber,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    const Text(
-                      'Información personal',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _nombreController,
-                      decoration: const InputDecoration(labelText: 'Nombre'),
-                      validator: (v) => v!.trim().isEmpty ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _apellidoController,
-                      decoration: const InputDecoration(labelText: 'Apellido'),
-                      validator: (v) => v!.isEmpty ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _cedulaController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(labelText: 'Cédula'),
-                      validator: (v) =>
-                          v!.length < 7 ? 'Mínimo 7 dígitos' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _carnetController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(labelText: 'Carnet'),
-                      validator: (v) =>
-                          v!.trim().length < 10 ? 'Mínimo 10 dígitos' : null,
-                    ),
-                    const SizedBox(height: 30),
-                    const Text(
-                      'Información académica',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    DropdownButtonFormField<int>(
-                      isExpanded: true,
-                      initialValue: _carreraIdSeleccionado,
-                      decoration: const InputDecoration(
-                        labelText: 'Carrera Académica',
-                      ),
-                      items: _carreras.map<DropdownMenuItem<int>>((c) {
-                        return DropdownMenuItem<int>(
-                          value: c['id_carrera'] ?? c['id'],
-                          child: Text(c['nombre_carrera'] ?? c['nombre'] ?? ''),
-                        );
-                      }).toList(),
-                      onChanged: (val) =>
-                          setState(() => _carreraIdSeleccionado = val),
-                      validator: (v) => v == null ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 30),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _guardando ? null : _guardarCambios,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF007BFF),
-                          foregroundColor: Colors.white,
+                child: Form(
+                  key: _formKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Mostrar puntos acumulados
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.amber.shade200),
                         ),
-                        child: _guardando
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : const Text(
-                                'GUARDAR CAMBIOS',
-                                style: TextStyle(fontSize: 16),
-                              ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.star, color: Colors.amber, size: 30),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Puntos acumulados',
+                                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                                ),
+                                Text(
+                                  '${usuario.puntuacion} pts',
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.amber,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 20),
+
+                      const Text(
+                        'Información personal',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _nombreController,
+                        decoration: const InputDecoration(labelText: 'Nombre'),
+                        validator: (v) => v!.trim().isEmpty ? 'Requerido' : null,
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _apellidoController,
+                        decoration: const InputDecoration(labelText: 'Apellido'),
+                        validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _cedulaController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        decoration: const InputDecoration(labelText: 'Cédula'),
+                        validator: (v) => v!.length < 7 ? 'Mínimo 7 dígitos' : null,
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _carnetController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        decoration: const InputDecoration(labelText: 'Carnet'),
+                        validator: (v) => v!.trim().length < 10 ? 'Mínimo 10 dígitos' : null,
+                      ),
+                      const SizedBox(height: 30),
+                      const Text(
+                        'Información académica',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      DropdownButtonFormField<int>(
+                        isExpanded: true,
+                        initialValue: _carreraIdSeleccionado,
+                        decoration: const InputDecoration(
+                          labelText: 'Carrera Académica',
+                        ),
+                        items: _carreras.map<DropdownMenuItem<int>>((c) {
+                          return DropdownMenuItem<int>(
+                            value: c['id_carrera'] ?? c['id'],
+                            child: Text(c['nombre_carrera'] ?? c['nombre'] ?? ''),
+                          );
+                        }).toList(),
+                        onChanged: (val) =>
+                            setState(() => _carreraIdSeleccionado = val),
+                        validator: (v) => v == null ? 'Requerido' : null,
+                      ),
+                      const SizedBox(height: 30),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _guardando ? null : _guardarCambios,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF007BFF),
+                            foregroundColor: Colors.white,
+                          ),
+                          child: _guardando
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : const Text(
+                                  'GUARDAR CAMBIOS',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Error: $e')),
+        ),
       ),
     );
   }

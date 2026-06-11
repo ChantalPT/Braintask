@@ -6,10 +6,9 @@ class PagoRepository {
 
   PagoRepository(this._supabase);
 
-  /// Otorga puntos al solver (sin debitar al autor)
-  /// Registra la transacción y actualiza la puntuación del usuario.
   Future<PagoModel> otorgarPuntos({
     required int idPublicacion,
+    required int idSolucion,
     required String idReceptor,
     required int monto,
   }) async {
@@ -18,50 +17,34 @@ class PagoRepository {
       throw Exception('Debes iniciar sesión para otorgar puntos.');
     }
 
-    // 1. Registrar la transacción en la tabla pagos (sin debitar, solo acreditación)
+    // 1. Insertar en la tabla pagos
+    final now = DateTime.now().toIso8601String();
     final pagoData = await _supabase
         .from('pagos')
         .insert({
           'id_publicacion': idPublicacion,
-          'id_pagador': idPagador, // quien otorga (el autor)
-          'id_receptor': idReceptor,
+          'id_solucion': idSolucion,
+          'usuario_pagador_id': idPagador,
+          'usuario_receptor_id': idReceptor,
           'monto': monto,
-          'fecha': DateTime.now().toIso8601String(),
-          'estado': 'completado',
+          'fecha_pago': now,
+          'created_at': now,
         })
         .select()
         .single();
 
-    // 2. Acreditar puntuacion al receptor (quien resolvió)
-    final receptorData = await _supabase
-        .from('usuarios')
-        .select('puntuacion')
-        .eq('auth_user_id', idReceptor)
-        .single();
-    final nuevoPuntuacionReceptor =
-        (receptorData['puntuacion'] as int? ?? 0) + monto;
-    await _supabase
-        .from('usuarios')
-        .update({'puntuacion': nuevoPuntuacionReceptor})
-        .eq('auth_user_id', idReceptor);
+    // 2. Llamar a la función RPC para sumar puntos al receptor
+    final response = await _supabase.rpc(
+      'sumar_puntos_usuario',
+      params: {
+        'p_auth_user_id': idReceptor,
+        'p_puntos': monto,
+      },
+    );
 
-    // NOTA: No debitar al pagador (autor)
+    print('✅ Puntos sumados vía RPC. Nuevos valores: $response');
 
     return PagoModel.fromJson(pagoData);
-  }
-
-  // Método original (ya no se usa, pero lo dejamos por compatibilidad)
-  Future<PagoModel> procesarPago({
-    required int idPublicacion,
-    required String idReceptor,
-    required int monto,
-  }) async {
-    // Redirigimos al nuevo método
-    return otorgarPuntos(
-      idPublicacion: idPublicacion,
-      idReceptor: idReceptor,
-      monto: monto,
-    );
   }
 
   Future<PagoModel?> getPagoPorPublicacion(int idPublicacion) async {
