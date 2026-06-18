@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../logic/providers/usuario_provider.dart';
 import '../../data/models/usuario_model.dart';
 import '../../auth/login_page.dart';
+import '../../logic/providers/notificaciones_provider.dart';
+import '../../logic/providers/usuario_provider.dart';
 
 class PerfilPage extends ConsumerStatefulWidget {
   const PerfilPage({super.key});
@@ -95,6 +97,8 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
   }
 
   Future<void> _cerrarSesion() async {
+    ref.invalidate(usuarioProvider);
+    ref.invalidate(notificacionesProvider);
     await Supabase.instance.client.auth.signOut();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
@@ -166,7 +170,10 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
                             children: [
                               const Text(
                                 'Puntos acumulados',
-                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
                               ),
                               Text(
                                 '${usuario.puntuacion} pts',

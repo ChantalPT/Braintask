@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../logic/providers/usuario_provider.dart';
 
 /// Model for a single notification row
 class NotificacionModel {
@@ -50,7 +51,9 @@ class NotificacionesNotifier extends AsyncNotifier<List<NotificacionModel>> {
 
   @override
   Future<List<NotificacionModel>> build() async {
+    ref.watch(usuarioProvider);
     final supabase = Supabase.instance.client;
+    print('Current Auth User ID in Provider: ${supabase.auth.currentUser?.id}');
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return [];
 
@@ -145,9 +148,10 @@ class NotificacionesNotifier extends AsyncNotifier<List<NotificacionModel>> {
 }
 
 final notificacionesProvider =
-    AsyncNotifierProvider<NotificacionesNotifier, List<NotificacionModel>>(
-      NotificacionesNotifier.new,
-    );
+    AsyncNotifierProvider.autoDispose<
+      NotificacionesNotifier,
+      List<NotificacionModel>
+    >(NotificacionesNotifier.new);
 
 /// Derived provider: count of unread notifications
 final unreadNotificacionesCountProvider = Provider<int>((ref) {
