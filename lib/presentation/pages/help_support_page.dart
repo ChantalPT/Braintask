@@ -17,7 +17,6 @@ class HelpSupportPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        automaticallyImplyLeading: false,
         title: const Text(
           'Ayuda y Soporte',
           style: TextStyle(

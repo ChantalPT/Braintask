@@ -6,7 +6,7 @@ import '../../logic/providers/usuario_provider.dart';
 import '../../data/models/usuario_model.dart';
 import '../../auth/login_page.dart';
 import '../../logic/providers/notificaciones_provider.dart';
-import '../../logic/providers/usuario_provider.dart';
+import 'help_support_page.dart';
 
 class PerfilPage extends ConsumerStatefulWidget {
   const PerfilPage({super.key});
@@ -105,6 +105,13 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
       context,
       MaterialPageRoute(builder: (_) => const LoginPage()),
       (route) => false,
+    );
+  }
+
+  void _abrirAyudaSoporte() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const HelpSupportPage()),
     );
   }
 
@@ -218,7 +225,7 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
                                       ),
                                       Text(
                                         // 🚨 Asegúrate de tener este campo en tu UsuarioModel
-                                        '${usuario.totalReportes ?? 0}', 
+                                        '${usuario.totalReportes}',
                                         style: const TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
@@ -298,6 +305,55 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
                       onChanged: (val) =>
                           setState(() => _carreraIdSeleccionado = val),
                       validator: (v) => v == null ? 'Requerido' : null,
+                    ),
+                    const SizedBox(height: 30),
+                    Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: _abrirAyudaSoporte,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.help_outline,
+                                color: Color(0xFF007BFF),
+                                size: 28,
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Ayuda y Soporte',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      'Preguntas frecuentes, pagos y contacto.',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.chevron_right, color: Colors.grey),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 30),
                     SizedBox(

@@ -10,7 +10,6 @@ import 'notificaciones_page.dart';
 import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
 import 'filtro.dart';
-import 'help_support_page.dart';
 import 'perfil_page.dart';
 import '../../logic/providers/usuario_provider.dart';
 
@@ -564,7 +563,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               height: 40,
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, stackTrace) => const SizedBox.shrink(),
           ),
           const SizedBox(width: 15),
           Consumer(
@@ -648,7 +647,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   'Cargando...',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-                error: (_, __) => const Text(
+                error: (_, stackTrace) => const Text(
                   '¡Hola! 👋',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
@@ -693,8 +692,6 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = ref.watch(unreadNotificacionesCountProvider);
-
     final List<Widget> pages = [
       _buildHomeContent(context),
       const NotificacionesPage(),
@@ -707,7 +704,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         },
       ),
       const PerfilPage(),
-      const HelpSupportPage(),
     ];
 
     return Scaffold(
@@ -734,10 +730,6 @@ class _HomePageState extends ConsumerState<HomePage> {
           const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             label: 'Perfil',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.help_outline),
-            label: 'Ayuda',
           ),
         ],
       ),
