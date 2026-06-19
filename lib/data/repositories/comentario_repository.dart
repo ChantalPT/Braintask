@@ -8,12 +8,35 @@ class ComentarioRepository {
 
   /// Obtiene todos los comentarios de una publicación con datos del autor.
   Future<List<Comentario>> obtenerComentarios(int publicacionId) async {
+    // 1. Obtenemos los comentarios normales
     final data = await _supabase
         .from('foro_comentarios')
-        .select('*, usuarios(nombre, apellido)')
+        .select('*, usuarios(nombre, apellido, auth_user_id)') // Asegúrate de pedir el auth_user_id para saber a quién reportar
         .eq('publicacion_id', publicacionId)
         .order('fecha_creacion', ascending: true);
-    return (data as List).map((e) => Comentario.fromJson(e)).toList();
+
+    // 2. Por cada comentario, contamos sus reportes de forma segura
+    final List<Comentario> comentariosList = [];
+    
+    for (var c in data) {
+      final mutableC = Map<String, dynamic>.from(c);
+      
+      try {
+        final reportes = await _supabase
+            .from('reportes')
+            .select('id_objeto_reportado')
+            .eq('tipo_reporte', 'comentario') // Buscamos solo reportes de tipo comentario
+            .eq('id_objeto_reportado', mutableC['id_comentario']);
+            
+        mutableC['total_reportes'] = reportes.length;
+      } catch (e) {
+        mutableC['total_reportes'] = 0; // Si falla, asumimos 0 para no colgar la app
+      }
+      
+      comentariosList.add(Comentario.fromJson(mutableC));
+    }
+
+    return comentariosList;
   }
 
   /// Inserta un nuevo comentario en la tabla foro_comentarios.

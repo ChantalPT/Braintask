@@ -154,41 +154,88 @@ class _PerfilPageState extends ConsumerState<PerfilPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Mostrar puntos acumulados
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amber.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 30),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Puntos acumulados',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
+                   // Panel de Estadísticas (Puntos y Reportes)
+                    Row(
+                      children: [
+                        // Tarjeta de Puntos
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.amber.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.star, color: Colors.amber, size: 28),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Puntos',
+                                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                                      ),
+                                      Text(
+                                        '${usuario.puntuacion} pts',
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.amber,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                '${usuario.puntuacion} pts',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.amber,
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 12),
+                        
+                        // Tarjeta de Reportes (Solo lectura)
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.report_problem, color: Colors.redAccent, size: 28),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Reportes',
+                                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                                      ),
+                                      Text(
+                                        // 🚨 Asegúrate de tener este campo en tu UsuarioModel
+                                        '${usuario.totalReportes ?? 0}', 
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 20),
+
 
                     const Text(
                       'Información personal',

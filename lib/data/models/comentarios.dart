@@ -6,9 +6,11 @@ class Comentario {
   final int votos;
   final DateTime fechaCreacion;
 
-  // Datos relacionales del usuario (cargados con join)
   final String? nombreUsuario;
   final String? apellidoUsuario;
+  
+
+  final int totalReportes;
 
   Comentario({
     required this.idComentario,
@@ -19,6 +21,7 @@ class Comentario {
     required this.fechaCreacion,
     this.nombreUsuario,
     this.apellidoUsuario,
+    this.totalReportes = 0, 
   });
 
   factory Comentario.fromJson(Map<String, dynamic> json) {
@@ -32,6 +35,7 @@ class Comentario {
       fechaCreacion: DateTime.parse(json['fecha_creacion']),
       nombreUsuario: usuarios?['nombre'],
       apellidoUsuario: usuarios?['apellido'],
+      totalReportes: json['total_reportes'] as int? ?? 0, 
     );
   }
 

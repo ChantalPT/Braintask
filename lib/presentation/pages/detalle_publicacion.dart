@@ -7,6 +7,8 @@ import 'package:braintask/data/repositories/comentario_repository.dart';
 import 'package:braintask/data/models/comentarios.dart';
 import 'package:braintask/data/repositories/solucion_repository.dart';
 import 'package:braintask/data/repositories/pago_repository.dart';
+import 'reporte_dialog.dart';
+import '../../data/models/soluciones.dart';
 
 class DetallePublicacionPage extends StatefulWidget {
   final int publicacionId;
@@ -140,9 +142,13 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     try {
       final solData = await _supabase
           .from('soluciones')
-          .select(
-            '*, usuarios!cedula_usuario_solver(nombre, apellido), calificacion_soluciones(usuario_id, estrellas)',
-          )
+          // 🚨 AQUÍ ESTÁ EL CAMBIO: Agregamos 'total_reportes,' en el select
+          .select('''
+            *, 
+            total_reportes,
+            usuarios!cedula_usuario_solver(nombre, apellido), 
+            calificacion_soluciones(usuario_id, estrellas)
+          ''')
           .eq('id_publicacion', widget.publicacionId)
           .order('fecha_subida', ascending: false);
 
@@ -858,48 +864,68 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     );
   }
 
-  Widget _buildSolucionBadge(bool aceptada, String estadoPublicacion) {
-    if (aceptada && estadoPublicacion == 'pagado') {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.green.shade100,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.verified, size: 14, color: Colors.green.shade800),
-            const SizedBox(width: 4),
-            Text(
-              'Aceptada · Pagada',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-                color: Colors.green.shade800,
-              ),
+Widget _buildSolucionBadge(bool estaAceptada, String estadoPublicacion, Map<String, dynamic> sol) {
+    // 🚨 Leemos el campo directamente desde el mapa dinámico que viene de Supabase
+    final int conteoReportes = sol['total_reportes'] as int? ?? 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: estaAceptada
+                ? Colors.green.shade100
+                : (estadoPublicacion == 'resuelto' || estadoPublicacion == 'pagado'
+                    ? Colors.grey.shade200
+                    : Colors.orange.shade100),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            estaAceptada
+                ? 'Aceptada'
+                : (estadoPublicacion == 'resuelto' || estadoPublicacion == 'pagado'
+                    ? 'No elegida'
+                    : 'Pendiente'),
+            style: TextStyle(
+              color: estaAceptada
+                  ? Colors.green.shade700
+                  : (estadoPublicacion == 'resuelto' || estadoPublicacion == 'pagado'
+                      ? Colors.grey.shade700
+                      : Colors.orange.shade700),
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
             ),
-          ],
+          ),
         ),
-      );
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: aceptada ? Colors.blue.shade100 : Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        aceptada ? 'Aceptada' : 'Pendiente',
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-          color: aceptada ? Colors.blue.shade800 : Colors.grey.shade700,
-        ),
-      ),
+
+        // SI TIENE REPORTES ACUMULADOS, SE MUESTRA DEBAJO DEL BADGE
+        if (conteoReportes > 0) ...[
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.report_problem_outlined, 
+                color: conteoReportes >= 2 ? Colors.red : Colors.orange.shade800, 
+                size: 14
+              ),
+              const SizedBox(width: 2),
+              Text(
+                'Reportada: $conteoReportes',
+                style: TextStyle(
+                  color: conteoReportes >= 2 ? Colors.red : Colors.orange.shade800,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
-
   // ── TAB SELECTOR ─────────────────────────────────────────────────────────────
   Widget _buildTabSelector() {
     return Container(
@@ -958,7 +984,6 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     );
   }
 
-  // ── VISTA SOLUCIONES ─────────────────────────────────────────────────────────
 
   Widget _buildVistaSoluciones(int puntosBase) {
     final esMiPropioEjercicio = _publicacion?['autor_id'] == _currentUserId;
@@ -1110,7 +1135,45 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     );
   }
 
-  Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
+Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
+
+    final int conteoReportes = sol['total_reportes'] as int? ?? 0;
+
+    if (conteoReportes >= 3) {
+      return Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        elevation: 0,
+        color: Colors.red.shade50,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+          side: BorderSide(color: Colors.red.shade200),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.gpp_bad_outlined, color: Colors.redAccent, size: 36),
+              SizedBox(height: 8),
+              Text(
+                'Solución Bloqueada',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.redAccent,
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Esta respuesta ha sido ocultada automáticamente debido a múltiples reportes de la comunidad.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.red, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     final esAutorPublicacion = _publicacion?['autor_id'] == _currentUserId;
     final estadoPublicacion = _publicacion?['estado'] ?? 'pendiente';
     final publicacionCerrada =
@@ -1163,32 +1226,78 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Cabecera: autor + badge estado
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                InkWell(
-                  onTap: cedulaSolverInt != null
-                      ? () => _irAPerfilPorCedula(cedulaSolverInt)
-                      : null,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person, color: Colors.blue, size: 20),
-                      const SizedBox(width: 4),
-                      Text(
-                        autor,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _buildSolucionBadge(estaAceptada, estadoPublicacion),
-              ],
+           Row(
+  children: [
+    Expanded(
+      child: InkWell(
+        onTap: cedulaSolverInt != null
+            ? () => _irAPerfilPorCedula(cedulaSolverInt)
+            : null,
+        borderRadius: BorderRadius.circular(8),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.person,
+              color: Colors.blue,
+              size: 20,
             ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                autor,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+
+    PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert),
+      onSelected: (value) {
+        if (value == 'reportar') {
+          ReporteDialog.mostrar(
+            context: context,
+            idUsuarioReportado: idSolver,
+            tipoReporte: 'solucion',
+            idObjetoReportado: sol['id_solucion'],
+            // 🚨 AQUÍ AGREGAMOS EL CALLBACK PARA QUE RECARGUE LA LISTA AL INSTANTE
+            onReporteEnviado: () {
+              _recargarSoluciones();
+            },
+          );
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: 'reportar',
+          child: Row(
+            children: [
+              Icon(
+                Icons.flag_outlined,
+                color: Colors.red,
+              ),
+              SizedBox(width: 8),
+              Text('Reportar solución'),
+            ],
+          ),
+        ),
+      ],
+    ),
+
+    _buildSolucionBadge(
+      estaAceptada,
+      estadoPublicacion,
+      sol,
+    ),
+  ],
+),
             const SizedBox(height: 10),
 
             // Botón aceptar (solo autor de la publicación, publicación abierta)
@@ -1327,6 +1436,38 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
   }
 
   Widget _buildComentarioCard(Comentario comentario) {
+   
+    if (comentario.totalReportes >= 3) {
+      return Card(
+        margin: const EdgeInsets.only(bottom: 10),
+        elevation: 0,
+        color: Colors.red.shade50,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.red.shade200),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+          child: Row(
+            children: [
+              Icon(Icons.gpp_bad_outlined, color: Colors.redAccent, size: 28),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Comentario ocultado por la comunidad debido a múltiples reportes.',
+                  style: TextStyle(color: Colors.red, fontSize: 13, fontStyle: FontStyle.italic),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // =========================================================
+    // 👇 SI ESTÁ LIMPIO, MOSTRAMOS TU DISEÑO ORIGINAL 👇
+    // =========================================================
+
     final cedulaAutor = comentario.usuarioCedula;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -1361,8 +1502,8 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                     color: comentario.votos > 0
                         ? Colors.orange
                         : comentario.votos < 0
-                        ? Colors.blue
-                        : Colors.grey,
+                            ? Colors.blue
+                            : Colors.grey,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -1384,18 +1525,59 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  InkWell(
-                    onTap: () => _irAPerfilPorCedula(cedulaAutor),
-                    borderRadius: BorderRadius.circular(4),
-                    child: Text(
-                      comentario.nombreCompleto,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                        decoration: TextDecoration.underline,
-                        fontSize: 13,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      InkWell(
+                        onTap: () => _irAPerfilPorCedula(cedulaAutor),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Text(
+                          comentario.nombreCompleto,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                            decoration: TextDecoration.underline,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
-                    ),
+                      
+        
+                      SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, size: 18, color: Colors.grey),
+                          padding: EdgeInsets.zero,
+                          onSelected: (value) {
+                            if (value == 'reportar') {
+                              ReporteDialog.mostrar(
+                                context: context,
+                                idUsuarioReportado: cedulaAutor.toString(), 
+                                tipoReporte: 'comentario',
+                                idObjetoReportado: comentario.idComentario,
+                                onReporteEnviado: () {
+                                  // 🚨 AQUÍ ESTÁ TU FUNCIÓN EXACTA PARA RECARGAR
+                                  _recargarComentarios(); 
+                                },
+                              );
+                            }
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: 'reportar',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.flag_outlined, color: Colors.red, size: 20),
+                                  SizedBox(width: 8),
+                                  Text('Reportar comentario'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -1404,6 +1586,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
+                   
                     _formatFecha(comentario.fechaCreacion),
                     style: const TextStyle(color: Colors.grey, fontSize: 11),
                   ),
@@ -1415,7 +1598,6 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
       ),
     );
   }
-
   Widget _buildFormularioComentario() {
     return Container(
       padding: const EdgeInsets.all(12),
