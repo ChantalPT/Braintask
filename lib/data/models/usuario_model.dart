@@ -9,6 +9,7 @@ class UsuarioModel {
   final int reputacion;
   final int totalCalificaciones;
   final String? authUserId;
+  final int totalReportes; // 🚨 1. NUEVA VARIABLE
 
   UsuarioModel({
     required this.id,
@@ -21,6 +22,7 @@ class UsuarioModel {
     this.reputacion = 0,
     this.totalCalificaciones = 0,
     this.authUserId,
+    this.totalReportes = 0, 
   });
 
   factory UsuarioModel.fromJson(Map<String, dynamic> json) {
@@ -37,8 +39,10 @@ class UsuarioModel {
       reputacion: (json['reputacion'] as num?)?.toInt() ?? 0,
       totalCalificaciones: json['total_calificaciones'] as int? ?? 0,
       authUserId: json['auth_user_id']?.toString(),
+      totalReportes: json['total_reportes'] as int? ?? 0, 
     );
   }
+
 
   Map<String, dynamic> toUpdateJson() {
     return {
@@ -62,6 +66,7 @@ class UsuarioModel {
     int? reputacion,
     int? totalCalificaciones,
     String? authUserId,
+    int? totalReportes, // 🚨 4. PARÁMETRO EN COPYWITH
   }) {
     return UsuarioModel(
       id: id,
@@ -74,6 +79,7 @@ class UsuarioModel {
       reputacion: reputacion ?? this.reputacion,
       totalCalificaciones: totalCalificaciones ?? this.totalCalificaciones,
       authUserId: authUserId ?? this.authUserId,
+      totalReportes: totalReportes ?? this.totalReportes, // 🚨 5. ASIGNACIÓN
     );
   }
 }

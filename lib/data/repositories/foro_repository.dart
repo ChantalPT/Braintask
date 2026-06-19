@@ -15,6 +15,7 @@ class ForoRepository {
       puntuacion,
       votos_foro,
       tiempo,
+      estado,
       autor:usuarios(nombre, apellido),
       foro_respuestas(id_respuesta)
     ''');

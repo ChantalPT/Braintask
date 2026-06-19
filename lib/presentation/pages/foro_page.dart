@@ -5,6 +5,7 @@ import '../../logic/providers/foro_provider.dart';
 import 'detalle_publicacion.dart';
 
 class ForoPage extends ConsumerWidget {
+  // 💡 SE QUITÓ LA VARIABLE DE AQUÍ PARA EVITAR ERRORES DE CONSTRUCTOR
   const ForoPage({super.key});
 
   @override
@@ -86,92 +87,147 @@ class ForoPage extends ConsumerWidget {
   }
 
   Widget _buildPreguntaCard(BuildContext context, ForoPregunta pregunta) {
+    final bool bajoRevision = pregunta.estado == 'en_revision';
+
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                DetallePublicacionPage(publicacionId: pregunta.id),
-          ),
-        );
-      },
+      onTap: bajoRevision 
+          ? () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Esta publicación se encuentra suspendida temporalmente bajo revisión.'),
+                  backgroundColor: Colors.redAccent,
+                ),
+              );
+            }
+          : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      DetallePublicacionPage(publicacionId: pregunta.id),
+                ),
+              );
+            },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(
+            color: bajoRevision ? Colors.redAccent : Colors.grey.shade200,
+            width: bajoRevision ? 2 : 1,
+          ),
         ),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
+            if (bajoRevision)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+                decoration: const BoxDecoration(
+                  color: Colors.redAccent,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(10),
+                    topRight: Radius.circular(10),
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.white, size: 16),
+                    SizedBox(width: 6),
+                    Text(
+                      'CONTENIDO BAJO REVISIÓN POR REPORTES',
+                      style: TextStyle(
+                        color: Colors.white, 
+                        fontSize: 11, 
+                        fontWeight: FontWeight.bold
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Publicado por ${pregunta.autorNombre} - ${pregunta.tiempo.day}/${pregunta.tiempo.month}/${pregunta.tiempo.year}',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    pregunta.titulo,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Publicado por ${pregunta.autorNombre} - ${pregunta.tiempo.day}/${pregunta.tiempo.month}/${pregunta.tiempo.year}',
+                          style: TextStyle(
+                            color: bajoRevision ? Colors.red.shade700 : Colors.grey.shade600, 
+                            fontSize: 12
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          pregunta.titulo,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: bajoRevision ? Colors.grey : Colors.black,
+                            decoration: bajoRevision ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          pregunta.descripcion.length > 80
+                              ? '${pregunta.descripcion.substring(0, 80)}...'
+                              : pregunta.descripcion,
+                          style: TextStyle(
+                            color: bajoRevision ? Colors.grey.shade400 : Colors.black87
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.chat_bubble_outline,
+                                  size: 16,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${pregunta.respuestasCount} respuestas',
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${pregunta.puntosBase} pts base',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Text(
+                                  '${pregunta.votos} votos',
+                                  style: const TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    pregunta.descripcion.length > 80
-                        ? '${pregunta.descripcion.substring(0, 80)}...'
-                        : pregunta.descripcion,
-                    style: const TextStyle(color: Colors.black87),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.chat_bubble_outline,
-                            size: 16,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${pregunta.respuestasCount} respuestas',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '${pregunta.puntosBase} pts base',
-                            style: const TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            '${pregunta.votos} votos',
-                            style: const TextStyle(
-                              color: Colors.black54,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ),
                 ],
               ),

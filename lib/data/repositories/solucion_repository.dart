@@ -8,12 +8,16 @@ class SolucionesRepository {
   SolucionesRepository(this._supabase);
 
   /// Obtiene soluciones con datos del autor via cedula_usuario_solver → usuarios.cedula
+/// Obtiene soluciones con datos del autor via cedula_usuario_solver → usuarios.cedula
   Future<List<Solucion>> getSolucionesPorPublicacion(int idPublicacion) async {
     final data = await _supabase
         .from('soluciones')
-        .select('*, usuarios!cedula_usuario_solver(nombre, apellido)')
+        // 🚨 Pedimos la columna virtual 'total_reportes' explícitamente desde Supabase
+        .select('*, total_reportes, usuarios!cedula_usuario_solver(nombre, apellido)')
         .eq('id_publicacion', idPublicacion)
         .order('fecha_subida', ascending: false);
+        
+    // 💡 Al mapear con Solucion.fromJson, tu Provider volverá a compilar limpiamente al instante
     return (data as List).map((e) => Solucion.fromJson(e)).toList();
   }
 

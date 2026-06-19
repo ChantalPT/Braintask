@@ -8,6 +8,7 @@ class ForoPregunta {
   final int respuestasCount;
   final DateTime tiempo;
   final int userVote; // 1 = upvote, -1 = downvote, 0 = sin voto
+  final String estado; // 🚨 1. NUEVA VARIABLE PARA LA HU-15
 
   ForoPregunta({
     required this.id,
@@ -19,6 +20,7 @@ class ForoPregunta {
     required this.respuestasCount,
     required this.tiempo,
     this.userVote = 0,
+    required this.estado, // 🚨 2. REQUERIDO EN EL CONSTRUCTOR
   });
 
   factory ForoPregunta.fromJson(Map<String, dynamic> json) {
@@ -48,6 +50,8 @@ class ForoPregunta {
       tiempo: json['tiempo'] != null
           ? DateTime.parse(json['tiempo'])
           : DateTime.now(),
+      // 🚨 3. MAPEAMOS EL ESTADO REAL QUE VIENE DE LA TABLA 'publicaciones' EN SUPABASE
+      estado: json['estado'] ?? 'activo', 
     );
   }
 
@@ -56,6 +60,7 @@ class ForoPregunta {
     int? puntosBase,
     int? respuestasCount,
     int? userVote,
+    String? estado, // 🚨 4. PERMITIR MODIFICAR EL ESTADO EN COPIAS
   }) {
     return ForoPregunta(
       id: id,
@@ -67,6 +72,7 @@ class ForoPregunta {
       respuestasCount: respuestasCount ?? this.respuestasCount,
       tiempo: tiempo,
       userVote: userVote ?? this.userVote,
+      estado: estado ?? this.estado, // 🚨 ASIGNACIÓN AQUÍ
     );
   }
 }
