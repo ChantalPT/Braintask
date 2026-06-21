@@ -596,6 +596,33 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
       );
       _comentarioController.clear();
       await _recargarComentarios();
+
+      final autorId = _publicacion?['autor_id'];
+      if (autorId != null &&
+          autorId != _currentUserId &&
+          _currentUserId != null) {
+        try {
+          final comentaristaData = await _supabase
+              .from('usuarios')
+              .select('nombre, apellido')
+              .eq('auth_user_id', _currentUserId!)
+              .single();
+          final comentaristaNombre =
+              '${comentaristaData['nombre']} ${comentaristaData['apellido']}';
+          await _supabase.from('notificaciones').insert({
+            'usuario_id': autorId,
+            'mensaje':
+                '$comentaristaNombre ha comentado en tu ejercicio "${_publicacion!['titulo']}".',
+            'tipo': 'nuevo_comentario',
+            'id_publicacion': widget.publicacionId,
+            'leida': false,
+          });
+        } catch (e) {
+          debugPrint('Error al enviar notificación de comentario: $e');
+        }
+      }
+
+      if (mounted) _snack('Comentario publicado', color: Colors.green);
     } catch (e) {
       if (mounted) _snack('Error al comentar: $e', color: Colors.red);
     } finally {

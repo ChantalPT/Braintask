@@ -144,6 +144,12 @@ class _NotificacionCard extends StatelessWidget {
     switch (tipo) {
       case 'solucion_aceptada':
         return Icons.check_circle;
+      case 'nueva_solucion':
+        return Icons.assignment;
+      case 'nuevo_comentario':
+        return Icons.comment;
+      case 'pago':
+        return Icons.payment;
       default:
         return Icons.notifications;
     }
@@ -153,6 +159,12 @@ class _NotificacionCard extends StatelessWidget {
     switch (tipo) {
       case 'solucion_aceptada':
         return Colors.green;
+      case 'nueva_solucion':
+        return Colors.blue;
+      case 'nuevo_comentario':
+        return Colors.purple;
+      case 'pago':
+        return Colors.orange;
       default:
         return const Color(0xFF007BFF);
     }
