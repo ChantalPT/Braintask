@@ -142,7 +142,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     try {
       final solData = await _supabase
           .from('soluciones')
-          // 🚨 AQUÍ ESTÁ EL CAMBIO: Agregamos 'total_reportes,' en el select
+          //AQUÍ ESTÁ EL CAMBIO: Agregue 'total_reportes,' en el select
           .select('''
             *, 
             total_reportes,
@@ -163,7 +163,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         _cargandoSoluciones = false;
       });
     } catch (e) {
-      debugPrint('❌ Error cargando soluciones: $e');
+      debugPrint('Error cargando soluciones: $e');
       setState(() => _cargandoSoluciones = false);
     }
   }
@@ -179,7 +179,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         _cargandoComentarios = false;
       });
     } catch (e) {
-      debugPrint('❌ Error cargando comentarios: $e');
+      debugPrint('Error cargando comentarios: $e');
       setState(() => _cargandoComentarios = false);
     }
   }
@@ -306,7 +306,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     String idSolver,
     String solverNombre,
   ) async {
-    print("🚀 Entrando a _aceptarSolucionConCalificacion");
+    print("Entrando a _aceptarSolucionConCalificacion");
     if (_currentUserId == null) {
       _snack('Debes iniciar sesión para aceptar soluciones');
       return;
@@ -360,7 +360,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
       print("9. Pago realizado, id: ${pago.idPago}");
       print("10. Insertando notificación...");
       // Insert notification for the solver
-      print("📌📌📌📌📌📌 idSolver: '$idSolver'");
+      print("idSolver: '$idSolver'");
       final titulo = _publicacion?['titulo'] ?? 'un ejercicio';
       await _supabase.from('notificaciones').insert({
         'usuario_id': idSolver,
@@ -370,7 +370,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         'id_publicacion': widget.publicacionId,
         'leida': false,
       });
-      print("✅ Notificación insertada correctamente");
+      print("Notificación insertada correctamente");
 
       await _cargarTodo();
       if (!mounted) return;
@@ -471,7 +471,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
 
   Future<void> _subirYEnviarSolucion() async {
     if (_currentUserId == null) return;
-
+    print(" SOLUCIÓN INSERTADA");
     final estaPendiente = await _solucionesRepository.publicacionEstaPendiente(
       widget.publicacionId,
     );
@@ -528,6 +528,38 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
         'fecha_subida': DateTime.now().toIso8601String(),
       };
       await _supabase.from('soluciones').insert(insertData);
+
+      //Funcion para obtener la notificacion de la solucion enviada, para luego
+      //enviar la notificacion al autor de la publicacion
+      final autorId = _publicacion?['autor_id'];
+      if (autorId != null &&
+          autorId != _currentUserId &&
+          _currentUserId != null) {
+        print("autorId: $autorId");
+        try {
+          final solverData = await _supabase
+              .from('usuarios')
+              .select('nombre, apellido')
+              .eq('auth_user_id', _currentUserId!)
+              .single();
+          final solverNombreCompleto =
+              '${solverData['nombre']} ${solverData['apellido']}';
+          print("📌 _currentUserId: $_currentUserId");
+          print("📌 solverNombreCompleto: $solverNombreCompleto");
+          //Notificación al autor
+          await _supabase.from('notificaciones').insert({
+            'usuario_id': autorId,
+            'mensaje':
+                '$solverNombreCompleto ha enviado una solución a tu ejercicio "${_publicacion!['titulo']}".',
+            'tipo': 'nueva_solucion',
+            'id_publicacion': widget.publicacionId,
+            'leida': false,
+          });
+          print("📌 id_publicacion: ${widget.publicacionId}");
+        } catch (e) {
+          debugPrint('Error al enviar notificación: $e');
+        }
+      }
 
       _solucionController.clear();
       setState(() {
@@ -864,8 +896,12 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
     );
   }
 
-Widget _buildSolucionBadge(bool estaAceptada, String estadoPublicacion, Map<String, dynamic> sol) {
-    // 🚨 Leemos el campo directamente desde el mapa dinámico que viene de Supabase
+  Widget _buildSolucionBadge(
+    bool estaAceptada,
+    String estadoPublicacion,
+    Map<String, dynamic> sol,
+  ) {
+    //Leer el campo directamente desde el mapa dinámico que viene de Supabase
     final int conteoReportes = sol['total_reportes'] as int? ?? 0;
 
     return Column(
@@ -877,23 +913,26 @@ Widget _buildSolucionBadge(bool estaAceptada, String estadoPublicacion, Map<Stri
           decoration: BoxDecoration(
             color: estaAceptada
                 ? Colors.green.shade100
-                : (estadoPublicacion == 'resuelto' || estadoPublicacion == 'pagado'
-                    ? Colors.grey.shade200
-                    : Colors.orange.shade100),
+                : (estadoPublicacion == 'resuelto' ||
+                          estadoPublicacion == 'pagado'
+                      ? Colors.grey.shade200
+                      : Colors.orange.shade100),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
             estaAceptada
                 ? 'Aceptada'
-                : (estadoPublicacion == 'resuelto' || estadoPublicacion == 'pagado'
-                    ? 'No elegida'
-                    : 'Pendiente'),
+                : (estadoPublicacion == 'resuelto' ||
+                          estadoPublicacion == 'pagado'
+                      ? 'No elegida'
+                      : 'Pendiente'),
             style: TextStyle(
               color: estaAceptada
                   ? Colors.green.shade700
-                  : (estadoPublicacion == 'resuelto' || estadoPublicacion == 'pagado'
-                      ? Colors.grey.shade700
-                      : Colors.orange.shade700),
+                  : (estadoPublicacion == 'resuelto' ||
+                            estadoPublicacion == 'pagado'
+                        ? Colors.grey.shade700
+                        : Colors.orange.shade700),
               fontWeight: FontWeight.bold,
               fontSize: 12,
             ),
@@ -907,15 +946,19 @@ Widget _buildSolucionBadge(bool estaAceptada, String estadoPublicacion, Map<Stri
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.report_problem_outlined, 
-                color: conteoReportes >= 2 ? Colors.red : Colors.orange.shade800, 
-                size: 14
+                Icons.report_problem_outlined,
+                color: conteoReportes >= 2
+                    ? Colors.red
+                    : Colors.orange.shade800,
+                size: 14,
               ),
               const SizedBox(width: 2),
               Text(
                 'Reportada: $conteoReportes',
                 style: TextStyle(
-                  color: conteoReportes >= 2 ? Colors.red : Colors.orange.shade800,
+                  color: conteoReportes >= 2
+                      ? Colors.red
+                      : Colors.orange.shade800,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
@@ -926,6 +969,7 @@ Widget _buildSolucionBadge(bool estaAceptada, String estadoPublicacion, Map<Stri
       ],
     );
   }
+
   // ── TAB SELECTOR ─────────────────────────────────────────────────────────────
   Widget _buildTabSelector() {
     return Container(
@@ -983,7 +1027,6 @@ Widget _buildSolucionBadge(bool estaAceptada, String estadoPublicacion, Map<Stri
       ),
     );
   }
-
 
   Widget _buildVistaSoluciones(int puntosBase) {
     final esMiPropioEjercicio = _publicacion?['autor_id'] == _currentUserId;
@@ -1135,8 +1178,7 @@ Widget _buildSolucionBadge(bool estaAceptada, String estadoPublicacion, Map<Stri
     );
   }
 
-Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
-
+  Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
     final int conteoReportes = sol['total_reportes'] as int? ?? 0;
 
     if (conteoReportes >= 3) {
@@ -1226,78 +1268,67 @@ Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Cabecera: autor + badge estado
-           Row(
-  children: [
-    Expanded(
-      child: InkWell(
-        onTap: cedulaSolverInt != null
-            ? () => _irAPerfilPorCedula(cedulaSolverInt)
-            : null,
-        borderRadius: BorderRadius.circular(8),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.person,
-              color: Colors.blue,
-              size: 20,
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                autor,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                  decoration: TextDecoration.underline,
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: cedulaSolverInt != null
+                        ? () => _irAPerfilPorCedula(cedulaSolverInt)
+                        : null,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person, color: Colors.blue, size: 20),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            autor,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (value) {
+                    if (value == 'reportar') {
+                      ReporteDialog.mostrar(
+                        context: context,
+                        idUsuarioReportado: idSolver,
+                        tipoReporte: 'solucion',
+                        idObjetoReportado: sol['id_solucion'],
+                        //AQUÍ SE AGREGO EL CALLBACK PARA QUE RECARGUE LA LISTA AL INSTANTE
+                        onReporteEnviado: () {
+                          _recargarSoluciones();
+                        },
+                      );
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'reportar',
+                      child: Row(
+                        children: [
+                          Icon(Icons.flag_outlined, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Reportar solución'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                _buildSolucionBadge(estaAceptada, estadoPublicacion, sol),
+              ],
             ),
-          ],
-        ),
-      ),
-    ),
-
-    PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert),
-      onSelected: (value) {
-        if (value == 'reportar') {
-          ReporteDialog.mostrar(
-            context: context,
-            idUsuarioReportado: idSolver,
-            tipoReporte: 'solucion',
-            idObjetoReportado: sol['id_solucion'],
-            // 🚨 AQUÍ AGREGAMOS EL CALLBACK PARA QUE RECARGUE LA LISTA AL INSTANTE
-            onReporteEnviado: () {
-              _recargarSoluciones();
-            },
-          );
-        }
-      },
-      itemBuilder: (context) => const [
-        PopupMenuItem(
-          value: 'reportar',
-          child: Row(
-            children: [
-              Icon(
-                Icons.flag_outlined,
-                color: Colors.red,
-              ),
-              SizedBox(width: 8),
-              Text('Reportar solución'),
-            ],
-          ),
-        ),
-      ],
-    ),
-
-    _buildSolucionBadge(
-      estaAceptada,
-      estadoPublicacion,
-      sol,
-    ),
-  ],
-),
             const SizedBox(height: 10),
 
             // Botón aceptar (solo autor de la publicación, publicación abierta)
@@ -1436,7 +1467,6 @@ Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
   }
 
   Widget _buildComentarioCard(Comentario comentario) {
-   
     if (comentario.totalReportes >= 3) {
       return Card(
         margin: const EdgeInsets.only(bottom: 10),
@@ -1455,7 +1485,11 @@ Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
               Expanded(
                 child: Text(
                   'Comentario ocultado por la comunidad debido a múltiples reportes.',
-                  style: TextStyle(color: Colors.red, fontSize: 13, fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ),
             ],
@@ -1465,7 +1499,7 @@ Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
     }
 
     // =========================================================
-    // 👇 SI ESTÁ LIMPIO, MOSTRAMOS TU DISEÑO ORIGINAL 👇
+    // SI ESTÁ LIMPIO, MOSTRAMOS TU DISEÑO ORIGINAL
     // =========================================================
 
     final cedulaAutor = comentario.usuarioCedula;
@@ -1502,8 +1536,8 @@ Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
                     color: comentario.votos > 0
                         ? Colors.orange
                         : comentario.votos < 0
-                            ? Colors.blue
-                            : Colors.grey,
+                        ? Colors.blue
+                        : Colors.grey,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -1541,24 +1575,27 @@ Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
                           ),
                         ),
                       ),
-                      
-        
+
                       SizedBox(
                         height: 24,
                         width: 24,
                         child: PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert, size: 18, color: Colors.grey),
+                          icon: const Icon(
+                            Icons.more_vert,
+                            size: 18,
+                            color: Colors.grey,
+                          ),
                           padding: EdgeInsets.zero,
                           onSelected: (value) {
                             if (value == 'reportar') {
                               ReporteDialog.mostrar(
                                 context: context,
-                                idUsuarioReportado: cedulaAutor.toString(), 
+                                idUsuarioReportado: cedulaAutor.toString(),
                                 tipoReporte: 'comentario',
                                 idObjetoReportado: comentario.idComentario,
                                 onReporteEnviado: () {
-                                  // 🚨 AQUÍ ESTÁ TU FUNCIÓN EXACTA PARA RECARGAR
-                                  _recargarComentarios(); 
+                                  //QUÍ ESTÁ LA FUNCIÓN EXACTA PARA RECARGAR
+                                  _recargarComentarios();
                                 },
                               );
                             }
@@ -1568,7 +1605,11 @@ Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
                               value: 'reportar',
                               child: Row(
                                 children: [
-                                  Icon(Icons.flag_outlined, color: Colors.red, size: 20),
+                                  Icon(
+                                    Icons.flag_outlined,
+                                    color: Colors.red,
+                                    size: 20,
+                                  ),
                                   SizedBox(width: 8),
                                   Text('Reportar comentario'),
                                 ],
@@ -1586,7 +1627,6 @@ Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                   
                     _formatFecha(comentario.fechaCreacion),
                     style: const TextStyle(color: Colors.grey, fontSize: 11),
                   ),
@@ -1598,6 +1638,7 @@ Widget _buildSolucionCard(Map<String, dynamic> sol, int puntosBase) {
       ),
     );
   }
+
   Widget _buildFormularioComentario() {
     return Container(
       padding: const EdgeInsets.all(12),

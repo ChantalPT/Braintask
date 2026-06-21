@@ -10,6 +10,7 @@ class NotificacionModel {
   final bool leida;
   final DateTime? createdAt;
   final String? tipo;
+  final int? idPublicacion;
 
   NotificacionModel({
     required this.id,
@@ -18,6 +19,7 @@ class NotificacionModel {
     required this.leida,
     this.createdAt,
     this.tipo,
+    this.idPublicacion,
   });
 
   factory NotificacionModel.fromJson(Map<String, dynamic> json) {
@@ -30,6 +32,7 @@ class NotificacionModel {
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
       tipo: json['tipo']?.toString(),
+      idPublicacion: json['id_publicacion'] as int?,
     );
   }
 
