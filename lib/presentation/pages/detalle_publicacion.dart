@@ -544,8 +544,8 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
               .single();
           final solverNombreCompleto =
               '${solverData['nombre']} ${solverData['apellido']}';
-          print("📌 _currentUserId: $_currentUserId");
-          print("📌 solverNombreCompleto: $solverNombreCompleto");
+          print(" _currentUserId: $_currentUserId");
+          print(" solverNombreCompleto: $solverNombreCompleto");
           //Notificación al autor
           await _supabase.from('notificaciones').insert({
             'usuario_id': autorId,
@@ -555,7 +555,7 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
             'id_publicacion': widget.publicacionId,
             'leida': false,
           });
-          print("📌 id_publicacion: ${widget.publicacionId}");
+          print(" id_publicacion: ${widget.publicacionId}");
         } catch (e) {
           debugPrint('Error al enviar notificación: $e');
         }

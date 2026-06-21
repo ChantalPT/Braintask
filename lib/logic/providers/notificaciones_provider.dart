@@ -116,14 +116,35 @@ class NotificacionesNotifier extends AsyncNotifier<List<NotificacionModel>> {
   }
 
   Future<void> marcarComoLeida(int id) async {
+    print("marcarComoLeida id: $id");
     final supabase = Supabase.instance.client;
-    await supabase.from('notificaciones').update({'leida': true}).eq('id', id);
+    try {
+      // 1. Hacer el update
+      final updateResponse = await supabase
+          .from('notificaciones')
+          .update({'leida': true})
+          .eq('id', id);
+      print("update: $updateResponse");
 
-    // Update local state immediately
-    state = state.whenData(
-      (list) =>
-          list.map((n) => n.id == id ? n.copyWith(leida: true) : n).toList(),
-    );
+      // 2. Verificar que la fila se actualizó (hacer un select)
+      final checkResponse = await supabase
+          .from('notificaciones')
+          .select('id, leida')
+          .eq('id', id)
+          .single();
+      print("leida es: ${checkResponse['leida']}");
+
+      if (checkResponse['leida'] != true) {
+      } else {
+        print("Campo leida actualizado a true");
+      }
+
+      // 3. Actualizar estado local
+      state = state.whenData(
+        (list) =>
+            list.map((n) => n.id == id ? n.copyWith(leida: true) : n).toList(),
+      );
+    } catch (e) {}
   }
 
   Future<void> marcarTodasComoLeidas() async {
