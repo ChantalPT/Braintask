@@ -1,3 +1,4 @@
+import 'package:braintask/presentation/pages/detalle_publicacion.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../logic/providers/notificaciones_provider.dart';
@@ -83,10 +84,23 @@ class NotificacionesPage extends ConsumerWidget {
                 return _NotificacionCard(
                   notificacion: notif,
                   onTap: () {
+                    // 1. Marcar como leída si no lo está
                     if (!notif.leida) {
                       ref
                           .read(notificacionesProvider.notifier)
                           .marcarComoLeida(notif.id);
+                    }
+
+                    // 2. Navegar al detalle si tiene idPublicacion
+                    if (notif.idPublicacion != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DetallePublicacionPage(
+                            publicacionId: notif.idPublicacion!,
+                          ),
+                        ),
+                      );
                     }
                   },
                 );
