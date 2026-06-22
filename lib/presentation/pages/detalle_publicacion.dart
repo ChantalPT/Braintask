@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:braintask/presentation/pages/perfil_publico_page.dart';
+import 'package:braintask/presentation/pages/chat_detail_page.dart';
 import 'package:braintask/data/repositories/comentario_repository.dart';
 import 'package:braintask/data/models/comentarios.dart';
 import 'package:braintask/data/repositories/solucion_repository.dart';
@@ -820,6 +821,44 @@ class _DetallePublicacionPageState extends State<DetallePublicacionPage> {
                                 ),
                               ],
                             ),
+                            if (_currentUserId != null &&
+                                pub['autor_id'] != null &&
+                                _currentUserId != pub['autor_id'])
+                              Padding(
+                                padding: const EdgeInsets.only(top: 10),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ChatDetailPage(
+                                            otroUserId:
+                                                pub['autor_id'] as String,
+                                            otroNombre: autorNombre,
+                                            otroApellido: '',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(
+                                      Icons.chat_bubble_outline,
+                                      size: 16,
+                                    ),
+                                    label: const Text('Contactar'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFF007BFF),
+                                      side: const BorderSide(
+                                          color: Color(0xFF007BFF)),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(20),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             const Divider(height: 24),
                             const Text(
                               'Enunciado:',

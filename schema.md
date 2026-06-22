@@ -1,3 +1,16 @@
+## Table `mensajes`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `int8` | Primary Identity |
+| `emisor_id` | `uuid` | Not Null |
+| `receptor_id` | `uuid` | Not Null |
+| `contenido` | `text` | Not Null |
+| `leido` | `bool` | Not Null, Default false |
+| `created_at` | `timestamptz` | Not Null, Default now() |
+
 ## Table `notificaciones`
 
 ### Columns

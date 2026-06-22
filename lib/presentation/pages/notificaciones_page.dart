@@ -1,4 +1,5 @@
 import 'package:braintask/presentation/pages/detalle_publicacion.dart';
+import 'package:braintask/presentation/pages/chat_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../logic/providers/notificaciones_provider.dart';
@@ -78,7 +79,7 @@ class NotificacionesPage extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               itemCount: notificaciones.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final notif = notificaciones[index];
                 return _NotificacionCard(
@@ -91,8 +92,15 @@ class NotificacionesPage extends ConsumerWidget {
                           .marcarComoLeida(notif.id);
                     }
 
-                    // 2. Navegar al detalle si tiene idPublicacion
-                    if (notif.idPublicacion != null) {
+                    // 2. Navegar según el tipo de notificación
+                    if (notif.tipo == 'nuevo_mensaje') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ChatListPage(),
+                        ),
+                      );
+                    } else if (notif.idPublicacion != null) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -150,6 +158,8 @@ class _NotificacionCard extends StatelessWidget {
         return Icons.comment;
       case 'pago':
         return Icons.payment;
+      case 'nuevo_mensaje':
+        return Icons.chat_bubble;
       default:
         return Icons.notifications;
     }
@@ -165,6 +175,8 @@ class _NotificacionCard extends StatelessWidget {
         return Colors.purple;
       case 'pago':
         return Colors.orange;
+      case 'nuevo_mensaje':
+        return const Color(0xFF007BFF);
       default:
         return const Color(0xFF007BFF);
     }

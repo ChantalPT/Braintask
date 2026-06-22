@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/publicacion.dart';
 import '../../data/repositories/publicaciones_repository.dart';
 import '../../logic/providers/notificaciones_provider.dart';
+import '../../logic/providers/chat_provider.dart';
 import 'notificaciones_page.dart';
+import 'chat_list_page.dart';
 import 'publicaciones.dart';
 import 'detalle_publicacion.dart';
 import 'filtro.dart';
@@ -548,9 +550,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _onBottomNavTap(int index) {
-    // Skip handling for Chat index (1)
-    if (index == 1) return;
-
     setState(() {
       _currentIndex = index;
     });
@@ -709,8 +708,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       _buildHomeContent(context),
-      //const NotificacionesPage(),
-      const SizedBox.expand(child: NotificacionesPage()),
+      const SizedBox.expand(child: ChatListPage()),
       PublicarPage(
         onSubmitSuccess: () {
           setState(() {
@@ -735,8 +733,43 @@ class _HomePageState extends ConsumerState<HomePage> {
             icon: Icon(Icons.home_filled),
             label: 'Inicio',
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
+          BottomNavigationBarItem(
+            icon: Consumer(
+              builder: (context, ref, _) {
+                final unread = ref.watch(unreadMensajesCountProvider);
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.chat_bubble_outline),
+                    if (unread > 0)
+                      Positioned(
+                        right: -4,
+                        top: -4,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            unread > 99 ? '99+' : '$unread',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
             label: 'Chat',
           ),
           const BottomNavigationBarItem(
