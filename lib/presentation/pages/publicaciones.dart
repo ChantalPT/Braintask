@@ -108,8 +108,8 @@ class _PublicarPageState extends State<PublicarPage> {
       return;
     }
     final puntos = int.tryParse(puntosTexto);
-    if (puntos == null) {
-      _mostrarError("Los puntos deben ser un número válido");
+    if (puntos == null || puntos > 10) {
+      _mostrarError("La recompensa debe estar entre 1-10 puntos");
       return;
     }
 
@@ -284,7 +284,7 @@ class _PublicarPageState extends State<PublicarPage> {
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: const InputDecoration(
                       labelText: "Puntos",
-                      hintText: "100",
+                      hintText: "10",
                       border: OutlineInputBorder(),
                     ),
                   ),
