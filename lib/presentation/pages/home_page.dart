@@ -118,7 +118,8 @@ class _HomePageState extends ConsumerState<HomePage> {
       final actualizadas = await Future.wait(
         data.map((p) async {
           final avg = await _repository.getAverageDifficulty(p.id);
-          return p.copyWith(promedioDificultad: avg);
+          final count = await _repository.getComentariosCount(p.id);
+          return p.copyWith(promedioDificultad: avg, comentariosCount: count);
         }),
       );
 
@@ -520,6 +521,20 @@ class _HomePageState extends ConsumerState<HomePage> {
                         ],
                       ),
                     ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.comment, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${pub.comentariosCount}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -694,7 +709,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       _buildHomeContent(context),
-      const NotificacionesPage(),
+      //const NotificacionesPage(),
+      const SizedBox.expand(child: NotificacionesPage()),
       PublicarPage(
         onSubmitSuccess: () {
           setState(() {

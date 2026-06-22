@@ -58,4 +58,17 @@ class PublicacionesRepository {
     }
     return sum / data.length;
   }
+
+  Future<int> getComentariosCount(int publicacionId) async {
+    try {
+      final response = await _supabase
+          .from('foro_comentarios')
+          .select('id_comentario')
+          .eq('publicacion_id', publicacionId);
+      final count = (response as List).length;
+      return count;
+    } catch (e) {
+      return 0;
+    }
+  }
 }

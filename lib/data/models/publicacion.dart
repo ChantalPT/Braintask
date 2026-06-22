@@ -10,6 +10,7 @@ class Publicacion {
   final double? promedioDificultad;
   final int puntuacion;
   final String? autorId;
+  final int comentariosCount;
 
   Publicacion({
     required this.id,
@@ -23,6 +24,7 @@ class Publicacion {
     this.promedioDificultad,
     this.puntuacion = 0,
     this.autorId,
+    required this.comentariosCount,
   });
 
   factory Publicacion.fromJson(Map<String, dynamic> json) {
@@ -42,10 +44,11 @@ class Publicacion {
       nombreFacultad: facultades != null ? facultades['nombre_facultad'] : null,
       puntuacion: json['puntuacion'] ?? 0,
       autorId: json['autor_id'],
+      comentariosCount: json['comentarios_count'] ?? 0,
     );
   }
 
-  Publicacion copyWith({double? promedioDificultad}) {
+  Publicacion copyWith({double? promedioDificultad, int? comentariosCount}) {
     return Publicacion(
       id: id,
       titulo: titulo,
@@ -58,6 +61,7 @@ class Publicacion {
       promedioDificultad: promedioDificultad ?? this.promedioDificultad,
       puntuacion: puntuacion,
       autorId: autorId,
+      comentariosCount: comentariosCount ?? this.comentariosCount,
     );
   }
 }
